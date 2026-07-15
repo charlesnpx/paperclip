@@ -24,7 +24,7 @@ func NewDefault() (*Repository, error) {
 		if err != nil {
 			return nil, err
 		}
-		home = filepath.Join(userHome, "Papercuts")
+		home = filepath.Join(userHome, "papercut")
 	} else if !filepath.IsAbs(home) {
 		return nil, errors.New("PAPERCUT_HOME must be absolute")
 	}

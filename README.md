@@ -6,7 +6,7 @@ resolving operational friction encountered by coding agents.
 The ledger is local-first and personal:
 
 ```text
-${PAPERCUT_HOME:-~/Papercuts}/PAPERCUTS.md
+${PAPERCUT_HOME:-~/papercut}/PAPERCUTS.md
 ```
 
 The ledger is append-only Markdown containing schema-versioned fenced JSON

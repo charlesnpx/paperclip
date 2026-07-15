@@ -11,6 +11,21 @@ import (
 	"github.com/charlesnpx/paperclip/internal/domain"
 )
 
+func TestNewDefaultUsesLowercasePapercutDirectory(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PAPERCUT_HOME", "")
+
+	repo, err := NewDefault()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, "papercut", "PAPERCUTS.md")
+	if repo.Path() != want {
+		t.Fatalf("default path = %q, want %q", repo.Path(), want)
+	}
+}
+
 func TestCommitWritesAtomicallyWithPermissions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md")
 	repo := New(path)

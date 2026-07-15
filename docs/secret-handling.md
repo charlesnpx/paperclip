@@ -6,7 +6,7 @@ Values passed to `papercut add` are stored as user-provided operational notes in
 the local ledger at:
 
 ```text
-${PAPERCUT_HOME:-~/Papercuts}/PAPERCUTS.md
+${PAPERCUT_HOME:-~/papercut}/PAPERCUTS.md
 ```
 
 The ledger is created with private file permissions where the platform supports
