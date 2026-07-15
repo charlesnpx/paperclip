@@ -2,14 +2,13 @@ package app
 
 import (
 	"errors"
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/charlesnpx/paperclip/internal/domain"
 	"github.com/charlesnpx/paperclip/internal/ledger"
-	"github.com/charlesnpx/paperclip/internal/policy"
 )
 
 type fixedContext struct {
@@ -24,7 +23,7 @@ func TestAddDedupeSuggestionsAndIdempotency(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
 	ids := []string{"obs_1", "evt_1", "evt_2", "evt_3"}
 	next := 0
-	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "repo-0123456789abcdef"}}, policy.DefaultScanner()).
+	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "repo-0123456789abcdef"}}).
 		WithClock(func() time.Time { return time.Date(2026, 7, 14, 12, 0, next, 0, time.UTC) }).
 		WithIDGenerator(func(prefix string) (string, error) {
 			if next >= len(ids) {
@@ -88,7 +87,7 @@ func TestTransitions(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
 	ids := []string{"obs_1", "evt_open", "evt_claim", "evt_verify"}
 	next := 0
-	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}, policy.DefaultScanner()).
+	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}).
 		WithClock(func() time.Time { return time.Date(2026, 7, 14, 12, 0, next, 0, time.UTC) }).
 		WithIDGenerator(func(prefix string) (string, error) {
 			id := ids[next]
@@ -110,40 +109,33 @@ func TestTransitions(t *testing.T) {
 	}
 }
 
-func TestAddRejectsQuotedCredentialsBeforeLedgerWrite(t *testing.T) {
-	dir := t.TempDir()
-	repo := ledger.New(filepath.Join(dir, "Papercuts", "PAPERCUTS.md"))
-	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}, policy.DefaultScanner())
-	for _, observed := range []string{
-		`{"authorization":"sensitive-value"}`,
-		`password=" CorrectHorseBatteryStaple"`,
-		`"authorization":" Basic dXNlcjpwYXNz"`,
-		`{\"accessToken\":\"secret\"}`,
-		`{"accessToken":"sensitive-value"}`,
-		"https://example.invalid/api?accessToken[0]=sensitive-value",
-		"https://example.invalid/api?auth[token]=sensitive-value",
-		"https://example.invalid/api?credentials[0][accessToken]=sensitive-value",
-		"https://example.invalid/api?credentials[clientSecret]=sensitive-value",
-		"https://example.invalid/api?headers[authorization]=sensitive-value",
-		"https://example.invalid/api?state[session]=sensitive-value",
-		"https://x.invalid/p?safe=1;credentials%5BaccessToken%5D=opaque-credential-value",
-		"https://example.invalid/%ZZ?access%5Ftoken=opaque-credential-value",
-		`password="CorrectHorseBatteryStaple"`,
-		"https://example.invalid/api?password=CorrectHorseBatteryStaple",
-	} {
-		_, err := application.Add(domain.RawRequest{Expected: "e", Observed: observed, Impact: "i", Locus: "repo"})
-		if err == nil || !errors.Is(err, ErrPolicy) {
-			t.Fatalf("expected policy denial for %q, got %v", observed, err)
-		}
+func TestAddStoresLiteralUserTextWithoutContentScanning(t *testing.T) {
+	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}})
+	observed := "fetch failed for https://build:placeholder@registry.example/package with token=ghp_abcdefghijklmnopqrstuvwxyz123456"
+
+	result, err := application.Add(domain.RawRequest{Expected: "e", Observed: observed, Impact: "i", Locus: "repo"})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "Papercuts", "PAPERCUTS.md")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("ledger should not be created, stat err=%v", err)
+	if !result.Created {
+		t.Fatalf("expected created observation, got %+v", result)
+	}
+	observations, err := application.List(QueryOptions{Repo: "all"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(observations) != 1 || observations[0].Observed != observed {
+		t.Fatalf("literal observed text was not preserved: %+v", observations)
+	}
+	if !strings.Contains(observations[0].Observed, "ghp_abcdefghijklmnopqrstuvwxyz123456") {
+		t.Fatalf("expected stored text to include literal token-like value: %q", observations[0].Observed)
 	}
 }
 
 func TestListRejectsInvalidRepoFilter(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
-	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}, policy.DefaultScanner())
+	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}})
 	if _, err := application.List(QueryOptions{Repo: "curent"}); err == nil || !errors.Is(err, ErrUsage) {
 		t.Fatalf("expected usage error, got %v", err)
 	}
@@ -156,7 +148,7 @@ func TestDuplicateCanPersistIdempotencyBindingWithoutSuggestion(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
 	ids := []string{"obs_1", "evt_open", "evt_bind"}
 	next := 0
-	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}, policy.DefaultScanner()).
+	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}).
 		WithClock(func() time.Time { return time.Date(2026, 7, 14, 12, 0, next, 0, time.UTC) }).
 		WithIDGenerator(func(prefix string) (string, error) {
 			id := ids[next]

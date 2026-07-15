@@ -10,7 +10,7 @@ import (
 )
 
 func TestPurePackagesDoNotImportShellBoundaries(t *testing.T) {
-	for _, dir := range []string{"internal/domain", "internal/policy", "internal/review"} {
+	for _, dir := range []string{"internal/domain", "internal/review"} {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			t.Fatal(err)

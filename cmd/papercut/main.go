@@ -7,7 +7,6 @@ import (
 	"github.com/charlesnpx/paperclip/internal/cli"
 	repoctx "github.com/charlesnpx/paperclip/internal/context"
 	"github.com/charlesnpx/paperclip/internal/ledger"
-	"github.com/charlesnpx/paperclip/internal/policy"
 )
 
 func main() {
@@ -19,6 +18,6 @@ func main() {
 		_, _ = os.Stderr.WriteString("papercut: " + err.Error() + "\n")
 		os.Exit(cli.ExitUnexpected)
 	}
-	application := app.New(repo, repoctx.NewResolver(""), policy.DefaultScanner())
+	application := app.New(repo, repoctx.NewResolver(""))
 	os.Exit(cli.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, application))
 }

@@ -19,7 +19,6 @@ const (
 	ExitSuccess     = 0
 	ExitUnexpected  = 1
 	ExitUsage       = 2
-	ExitPolicy      = 3
 	ExitConflict    = 4
 	ExitMalformed   = 5
 	ExitLockTimeout = 6

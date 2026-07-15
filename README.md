@@ -33,10 +33,12 @@ papercut instructions --format agents
 are `critical`, `high`, `medium`, `low`, and `info`; missing severity defaults to
 `medium`.
 
-For sensitive reports, prefer stdin JSON so values do not enter shell history:
+For sensitive reports, run `papercut` first and enter JSON through stdin so the
+report body does not enter shell history:
 
 ```sh
-printf '%s\n' '{
+$ papercut add --input-json -
+{
   "expected": "agent can run tests",
   "observed": "test harness exits before compiling",
   "impact": "blocks verification",
@@ -44,8 +46,15 @@ printf '%s\n' '{
   "scope": "go test",
   "severity": "high",
   "suggestion": "preserve compiler stderr"
-}' | papercut add --input-json -
+}
 ```
+
+Then press `Ctrl-D` to finish stdin.
+
+`papercut` does not perform runtime secret detection or redaction. It stores the
+text you provide in a local personal ledger, so do not paste secrets. See
+[docs/secret-handling.md](docs/secret-handling.md) for the current risk model
+and the future Gitleaks direction.
 
 ## Filtering
 
@@ -70,7 +79,7 @@ without a remote use `git-local:no-remote`. Directories outside Git use `none`.
 - `0`: success
 - `1`: unexpected or I/O failure
 - `2`: usage error
-- `3`: policy denied
+- `3`: reserved
 - `4`: idempotency conflict or invalid lifecycle transition
 - `5`: malformed ledger
 - `6`: lock timeout

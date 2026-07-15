@@ -3,7 +3,6 @@ package app
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/charlesnpx/paperclip/internal/domain"
 	"github.com/charlesnpx/paperclip/internal/ledger"
-	"github.com/charlesnpx/paperclip/internal/policy"
 )
 
 const DefaultLockTimeout = 5 * time.Second
@@ -28,17 +26,15 @@ type ContextResolver interface {
 type App struct {
 	store       Store
 	context     ContextResolver
-	scanner     policy.Scanner
 	clock       func() time.Time
 	newID       func(prefix string) (string, error)
 	lockTimeout time.Duration
 }
 
-func New(store Store, context ContextResolver, scanner policy.Scanner) *App {
+func New(store Store, context ContextResolver) *App {
 	return &App{
 		store:       store,
 		context:     context,
-		scanner:     scanner,
 		clock:       func() time.Time { return time.Now().UTC() },
 		newID:       randomID,
 		lockTimeout: DefaultLockTimeout,
@@ -67,9 +63,6 @@ func (a *App) Add(raw domain.RawRequest) (domain.CommitResult, error) {
 	validated, err := domain.ValidateRawRequest(raw)
 	if err != nil {
 		return domain.CommitResult{}, fmt.Errorf("%w: %v", ErrUsage, err)
-	}
-	if err := a.scanner.ScanValidated(validated); err != nil {
-		return domain.CommitResult{}, fmt.Errorf("%w: %v", ErrPolicy, err)
 	}
 	scanned := domain.ScannedRequest{Validated: validated}
 	ctx, err := a.context.Current()
@@ -109,9 +102,6 @@ func (a *App) Add(raw domain.RawRequest) (domain.CommitResult, error) {
 				}
 				events = append(events, event)
 			}
-			if err := a.scanEvents(events); err != nil {
-				return nil, domain.CommitResult{}, err
-			}
 			return events, result, nil
 		}
 
@@ -139,9 +129,6 @@ func (a *App) Add(raw domain.RawRequest) (domain.CommitResult, error) {
 			}
 			events = append(events, binding)
 		}
-		if err := a.scanEvents(events); err != nil {
-			return nil, domain.CommitResult{}, err
-		}
 		return events, result, nil
 	})
 }
@@ -158,9 +145,6 @@ func (a *App) Dispose(id string, reason string) (domain.CommitResult, error) {
 	reason = domain.NormalizeText(reason)
 	if reason == "" {
 		return domain.CommitResult{}, fmt.Errorf("%w: reason is required", ErrUsage)
-	}
-	if err := a.scanner.Scan("reason", reason); err != nil {
-		return domain.CommitResult{}, fmt.Errorf("%w: %v", ErrPolicy, err)
 	}
 	return a.transition(id, domain.EventDisposed, domain.DisposedPayload{Reason: reason})
 }
@@ -188,9 +172,6 @@ func (a *App) transition(id string, eventType domain.EventType, payload any) (do
 		}
 		event, err := domain.NewEvent(eventID, a.clock(), eventType, id, "", ctx, payload)
 		if err != nil {
-			return nil, domain.CommitResult{}, err
-		}
-		if err := a.scanEvents([]domain.Event{event}); err != nil {
 			return nil, domain.CommitResult{}, err
 		}
 		return []domain.Event{event}, domain.CommitResult{ObservationID: id}, nil
@@ -312,19 +293,6 @@ func (a *App) newIdempotencyBindingEvent(obsID string, obs domain.NormalizedObse
 	})
 }
 
-func (a *App) scanEvents(events []domain.Event) error {
-	for _, event := range events {
-		body, err := json.Marshal(event)
-		if err != nil {
-			return err
-		}
-		if err := a.scanner.ScanPersistable("persistable_event", body); err != nil {
-			return fmt.Errorf("%w: %v", ErrPolicy, err)
-		}
-	}
-	return nil
-}
-
 func randomID(prefix string) (string, error) {
 	buf := make([]byte, 12)
 	if _, err := rand.Read(buf); err != nil {
@@ -339,8 +307,6 @@ func ExitCode(err error) int {
 		return 0
 	case errors.Is(err, ErrUsage):
 		return 2
-	case errors.Is(err, ErrPolicy) || policy.IsDenied(err):
-		return 3
 	case errors.Is(err, ErrConflict):
 		return 4
 	case ledger.IsMalformed(err):

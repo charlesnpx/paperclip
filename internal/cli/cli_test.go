@@ -10,7 +10,6 @@ import (
 	"github.com/charlesnpx/paperclip/internal/app"
 	"github.com/charlesnpx/paperclip/internal/domain"
 	"github.com/charlesnpx/paperclip/internal/ledger"
-	"github.com/charlesnpx/paperclip/internal/policy"
 )
 
 type cliContext struct{}
@@ -23,7 +22,7 @@ func TestCLIAddListAndReviewJSON(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
 	ids := []string{"obs_1", "evt_1", "evt_2"}
 	next := 0
-	application := app.New(repo, cliContext{}, policy.DefaultScanner()).
+	application := app.New(repo, cliContext{}).
 		WithClock(func() time.Time { return time.Date(2026, 7, 14, 12, 0, next, 0, time.UTC) }).
 		WithIDGenerator(func(prefix string) (string, error) {
 			id := ids[next]
@@ -61,21 +60,11 @@ func TestCLIAddListAndReviewJSON(t *testing.T) {
 
 func TestCLIExitCodesAndDiagnostics(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
-	application := app.New(repo, cliContext{}, policy.DefaultScanner())
+	application := app.New(repo, cliContext{})
 	var stdout, stderr bytes.Buffer
 	code := Run([]string{"add", "--expected", "e"}, strings.NewReader(""), &stdout, &stderr, application)
 	if code != ExitUsage {
 		t.Fatalf("usage code=%d stderr=%s", code, stderr.String())
-	}
-	stdout.Reset()
-	stderr.Reset()
-	secret := "token=ghp_abcdefghijklmnopqrstuvwxyz123456"
-	code = Run([]string{"add", "--expected", "e", "--observed", secret, "--impact", "i", "--locus", "repo"}, strings.NewReader(""), &stdout, &stderr, application)
-	if code != ExitPolicy {
-		t.Fatalf("policy code=%d stderr=%s", code, stderr.String())
-	}
-	if strings.Contains(stderr.String(), "ghp_") || strings.Contains(stderr.String(), "token=") {
-		t.Fatalf("diagnostic leaked secret: %s", stderr.String())
 	}
 	stdout.Reset()
 	stderr.Reset()
@@ -109,7 +98,7 @@ func TestCLIDisposeSupportsDocumentedArgumentOrder(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
 	ids := []string{"obs_1", "evt_open", "evt_dispose"}
 	next := 0
-	application := app.New(repo, cliContext{}, policy.DefaultScanner()).
+	application := app.New(repo, cliContext{}).
 		WithClock(func() time.Time { return time.Date(2026, 7, 14, 12, 0, next, 0, time.UTC) }).
 		WithIDGenerator(func(prefix string) (string, error) {
 			id := ids[next]
@@ -132,9 +121,30 @@ func TestCLIDisposeSupportsDocumentedArgumentOrder(t *testing.T) {
 	}
 }
 
+func TestCLIAddAcceptsLiteralUserText(t *testing.T) {
+	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	ids := []string{"obs_1", "evt_open"}
+	next := 0
+	application := app.New(repo, cliContext{}).
+		WithIDGenerator(func(prefix string) (string, error) {
+			id := ids[next]
+			next++
+			return id, nil
+		})
+	observed := "fetch failed for https://build:placeholder@registry.example/package with token=ghp_abcdefghijklmnopqrstuvwxyz123456"
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"add", "--expected", "e", "--observed", observed, "--impact", "i", "--locus", "repo"}, strings.NewReader(""), &stdout, &stderr, application)
+	if code != ExitSuccess {
+		t.Fatalf("add code=%d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), `"observation_id": "obs_1"`) {
+		t.Fatalf("add stdout=%s", stdout.String())
+	}
+}
+
 func TestCLIInputJSONRejectsTrailingContent(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
-	application := app.New(repo, cliContext{}, policy.DefaultScanner())
+	application := app.New(repo, cliContext{})
 	body := `{"expected":"e","observed":"o","impact":"i","locus":"repo"} {"expected":"ignored","observed":"ignored","impact":"ignored","locus":"repo"}`
 	var stdout, stderr bytes.Buffer
 	code := Run([]string{"add", "--input-json", "-"}, strings.NewReader(body), &stdout, &stderr, application)
@@ -145,7 +155,7 @@ func TestCLIInputJSONRejectsTrailingContent(t *testing.T) {
 
 func TestCLIInputJSONRejectsExplicitEmptyCaptureFlag(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
-	application := app.New(repo, cliContext{}, policy.DefaultScanner())
+	application := app.New(repo, cliContext{})
 	body := `{"expected":"e","observed":"o","impact":"i","locus":"repo"}`
 	var stdout, stderr bytes.Buffer
 	code := Run([]string{"add", "--expected=", "--input-json", "-"}, strings.NewReader(body), &stdout, &stderr, application)
@@ -156,7 +166,7 @@ func TestCLIInputJSONRejectsExplicitEmptyCaptureFlag(t *testing.T) {
 
 func TestCLIInputJSONDecodeErrorDoesNotEchoUnknownField(t *testing.T) {
 	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
-	application := app.New(repo, cliContext{}, policy.DefaultScanner())
+	application := app.New(repo, cliContext{})
 	body := `{"expected":"e","observed":"o","impact":"i","locus":"repo","authorization=Basic dXNlcjpwYXNz":"secret"}`
 	var stdout, stderr bytes.Buffer
 	code := Run([]string{"add", "--input-json", "-"}, strings.NewReader(body), &stdout, &stderr, application)
