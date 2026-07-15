@@ -127,7 +127,7 @@ func Execute(opts Options) (Result, error) {
 		}
 		result.Targets["codex"] = targetResult
 		if opts.Operation != "uninstall" {
-			result.Notices = append(result.Notices, codexNotice(files[0].path))
+			result.Notices = append(result.Notices, codexNotice())
 		}
 	}
 	if contains(targets, "tools") {
@@ -233,7 +233,7 @@ func installDataFile(file installFile) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func codexNotice(skillPath string) string {
+func codexNotice() string {
 	agentsPath := os.Getenv("CODEX_HOME")
 	if agentsPath == "" {
 		if home, err := os.UserHomeDir(); err == nil {
@@ -243,7 +243,7 @@ func codexNotice(skillPath string) string {
 		}
 	}
 	agentsPath = filepath.Join(agentsPath, "AGENTS.md")
-	return "Paperclip Codex skill target: " + skillPath + ". To enable routine use, add this text to your " + agentsPath + " file:\n\nUse the paperclip skill when operational friction, repo issues, local machine issues, harness/tool/model failures, broken links, or repeated process blockers should be recorded for later review. Do not paste secrets; paperclip stores local notes as provided."
+	return "To enable routine Paperclip use in Codex, add this text to your " + agentsPath + " file:\n\nUse the paperclip skill when operational friction, repo issues, local machine issues, harness/tool/model failures, broken links, or repeated process blockers should be recorded for later review. Do not paste secrets; paperclip stores local notes as provided."
 }
 
 func parse(args []string, executable string) (Options, error) {
