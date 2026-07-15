@@ -25,6 +25,7 @@ type Result struct {
 	Kind      string                  `json:"kind"`
 	Targets   map[string]TargetResult `json:"targets"`
 	Warnings  []string                `json:"warnings"`
+	Notices   []string                `json:"notices"`
 }
 
 type TargetResult struct {
@@ -65,6 +66,12 @@ func Run(args []string, stdout io.Writer, stderr io.Writer, executable string) i
 		return 0
 	}
 	fmt.Fprintf(stdout, "%s %s %s\n", result.Name, result.Version, result.Operation)
+	for _, notice := range result.Notices {
+		if strings.TrimSpace(notice) == "" {
+			continue
+		}
+		fmt.Fprintf(stdout, "notice: %s\n", notice)
+	}
 	return 0
 }
 
@@ -89,6 +96,7 @@ func Execute(opts Options) (Result, error) {
 		Kind:      "delegated",
 		Targets:   map[string]TargetResult{},
 		Warnings:  []string{},
+		Notices:   []string{},
 	}
 	targets, err := expandTargets(opts.Target)
 	if err != nil {
@@ -96,6 +104,31 @@ func Execute(opts Options) (Result, error) {
 	}
 	for _, target := range targets {
 		result.Targets[target] = TargetResult{Files: []FileResult{}}
+	}
+	if contains(targets, "claude") {
+		files, err := targetFiles(opts, "claude")
+		if err != nil {
+			return Result{}, err
+		}
+		targetResult, err := applyTargetFiles(opts.Operation, files)
+		if err != nil {
+			return Result{}, err
+		}
+		result.Targets["claude"] = targetResult
+	}
+	if contains(targets, "codex") {
+		files, err := targetFiles(opts, "codex")
+		if err != nil {
+			return Result{}, err
+		}
+		targetResult, err := applyTargetFiles(opts.Operation, files)
+		if err != nil {
+			return Result{}, err
+		}
+		result.Targets["codex"] = targetResult
+		if opts.Operation != "uninstall" {
+			result.Notices = append(result.Notices, codexNotice(files[0].path))
+		}
 	}
 	if contains(targets, "tools") {
 		path, err := toolPath(opts.InstallRoot)
@@ -121,6 +154,96 @@ func Execute(opts Options) (Result, error) {
 		result.Targets["tools"] = TargetResult{Files: []FileResult{file}}
 	}
 	return result, nil
+}
+
+type installFile struct {
+	path string
+	body []byte
+	mode os.FileMode
+}
+
+func targetFiles(opts Options, target string) ([]installFile, error) {
+	root := opts.InstallRoot
+	if root == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		root = home
+	}
+	switch target {
+	case "claude":
+		return []installFile{
+			{
+				path: filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md"),
+				body: []byte(paperclipSkill),
+				mode: 0o644,
+			},
+			{
+				path: filepath.Join(root, ".claude", "rules", "paperclip.md"),
+				body: []byte(claudeRule),
+				mode: 0o644,
+			},
+		}, nil
+	case "codex":
+		return []installFile{
+			{
+				path: filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md"),
+				body: []byte(codexSkill),
+				mode: 0o644,
+			},
+		}, nil
+	default:
+		return nil, errors.New("unknown target")
+	}
+}
+
+func applyTargetFiles(operation string, files []installFile) (TargetResult, error) {
+	result := TargetResult{Files: make([]FileResult, 0, len(files))}
+	for _, file := range files {
+		item := FileResult{Path: file.path}
+		switch operation {
+		case "plan":
+		case "install":
+			sum, err := installDataFile(file)
+			if err != nil {
+				return TargetResult{}, err
+			}
+			item.SHA256 = sum
+		case "uninstall":
+			if err := uninstallTool(file.path); err != nil {
+				return TargetResult{}, err
+			}
+		default:
+			return TargetResult{}, errors.New("operation must be plan, install, or uninstall")
+		}
+		result.Files = append(result.Files, item)
+	}
+	return result, nil
+}
+
+func installDataFile(file installFile) (string, error) {
+	if err := os.MkdirAll(filepath.Dir(file.path), 0o755); err != nil {
+		return "", err
+	}
+	if err := writeFileAtomic(file.path, file.body, file.mode); err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(file.body)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func codexNotice(skillPath string) string {
+	agentsPath := os.Getenv("CODEX_HOME")
+	if agentsPath == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			agentsPath = filepath.Join(home, ".codex")
+		} else {
+			agentsPath = "$CODEX_HOME"
+		}
+	}
+	agentsPath = filepath.Join(agentsPath, "AGENTS.md")
+	return "Paperclip Codex skill target: " + skillPath + ". To enable routine use, add this text to your " + agentsPath + " file:\n\nUse the paperclip skill when operational friction, repo issues, local machine issues, harness/tool/model failures, broken links, or repeated process blockers should be recorded for later review. Do not paste secrets; paperclip stores local notes as provided."
 }
 
 func parse(args []string, executable string) (Options, error) {
@@ -207,7 +330,7 @@ func installTool(src string, dst string) (string, error) {
 
 func writeFileAtomic(dst string, body []byte, mode os.FileMode) error {
 	dir := filepath.Dir(dst)
-	tmp, err := os.CreateTemp(dir, "papercut-install-*.tmp")
+	tmp, err := os.CreateTemp(dir, "paperclip-install-*.tmp")
 	if err != nil {
 		return err
 	}
@@ -277,3 +400,53 @@ func SortedTargets(result Result) []string {
 	sort.Strings(targets)
 	return targets
 }
+
+const codexSkill = `---
+name: paperclip
+description: Explicit-use Paperclip workflows for recording and reviewing local operational friction. Use only when the user explicitly invokes paperclip or an installed global/project instruction tells you to use Paperclip.
+metadata:
+  policy:
+    allow_implicit_invocation: false
+---
+
+# Paperclip
+
+Use the local ` + "`papercut`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
+
+Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md`" + `. It stores the text provided by the user or agent; do not paste secrets.
+
+## Workflows
+
+- Add a papercut: run ` + "`papercut add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
+- Add sensitive details: prefer ` + "`papercut add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
+- Review current repo: run ` + "`papercut review`" + ` from the repository being worked on.
+- List everything: run ` + "`papercut list --repo all`" + `.
+- Dispose noise: run ` + "`papercut dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
+
+Use stdout from ` + "`papercut`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
+`
+
+const paperclipSkill = `---
+name: paperclip
+description: Explicit-use Paperclip workflows for recording and reviewing local operational friction. Use only when the user explicitly invokes paperclip or an installed global/project instruction tells you to use Paperclip.
+---
+
+# Paperclip
+
+Use the local ` + "`papercut`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
+
+Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md`" + `. It stores the text provided by the user or agent; do not paste secrets.
+
+## Workflows
+
+- Add a papercut: run ` + "`papercut add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
+- Add sensitive details: prefer ` + "`papercut add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
+- Review current repo: run ` + "`papercut review`" + ` from the repository being worked on.
+- List everything: run ` + "`papercut list --repo all`" + `.
+- Dispose noise: run ` + "`papercut dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
+
+Use stdout from ` + "`papercut`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
+`
+
+const claudeRule = `Use the Paperclip skill when operational friction, repo issues, local machine issues, harness/tool/model failures, broken links, or repeated process blockers should be recorded for later review. Do not paste secrets; Paperclip stores local notes as provided.
+`

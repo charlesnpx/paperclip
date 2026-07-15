@@ -6,7 +6,7 @@ import (
 	"github.com/charlesnpx/paperclip/internal/domain"
 )
 
-const Header = "# PAPERCUTS.md\n\nThis file is managed by papercut. Events are append-only fenced JSON blocks.\n\n"
+const Header = "# PAPERCLIP.md\n\nThis file is managed by paperclip. Events are append-only fenced JSON blocks.\n\n"
 
 func Parse(body []byte) (domain.Snapshot, error) {
 	if len(body) == 0 {

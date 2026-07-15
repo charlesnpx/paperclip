@@ -18,17 +18,27 @@ type Repository struct {
 }
 
 func NewDefault() (*Repository, error) {
-	home := os.Getenv("PAPERCUT_HOME")
+	home, source := defaultHome()
 	if home == "" {
 		userHome, err := os.UserHomeDir()
 		if err != nil {
 			return nil, err
 		}
-		home = filepath.Join(userHome, "papercut")
+		home = filepath.Join(userHome, "paperclip")
 	} else if !filepath.IsAbs(home) {
-		return nil, errors.New("PAPERCUT_HOME must be absolute")
+		return nil, errors.New(source + " must be absolute")
 	}
-	return New(filepath.Join(home, "PAPERCUTS.md")), nil
+	return New(filepath.Join(home, "PAPERCLIP.md")), nil
+}
+
+func defaultHome() (string, string) {
+	if home := os.Getenv("PAPERCLIP_HOME"); home != "" {
+		return home, "PAPERCLIP_HOME"
+	}
+	if home := os.Getenv("PAPERCUT_HOME"); home != "" {
+		return home, "PAPERCUT_HOME"
+	}
+	return "", ""
 }
 
 func New(path string) *Repository {
@@ -142,7 +152,7 @@ func (r *Repository) atomicWrite(body []byte, mode os.FileMode) error {
 		mode = 0o600
 	}
 	dir := filepath.Dir(r.path)
-	tmp := filepath.Join(dir, "papercut-"+randomHex(8)+".tmp")
+	tmp := filepath.Join(dir, "paperclip-"+randomHex(8)+".tmp")
 	file, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err

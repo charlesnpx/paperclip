@@ -41,7 +41,7 @@ func TestLedgerDoesNotUseHiddenTempFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(body), `".papercut-`) {
+	if strings.Contains(string(body), `".paperclip-`) {
 		t.Fatal("ledger temp files must not be hidden")
 	}
 }

@@ -19,7 +19,7 @@ func (cliContext) Current() (domain.Context, error) {
 }
 
 func TestCLIAddListAndReviewJSON(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	ids := []string{"obs_1", "evt_1", "evt_2"}
 	next := 0
 	application := app.New(repo, cliContext{}).
@@ -59,7 +59,7 @@ func TestCLIAddListAndReviewJSON(t *testing.T) {
 }
 
 func TestCLIExitCodesAndDiagnostics(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	application := app.New(repo, cliContext{})
 	var stdout, stderr bytes.Buffer
 	code := Run([]string{"add", "--expected", "e"}, strings.NewReader(""), &stdout, &stderr, application)
@@ -95,7 +95,7 @@ func TestCLIExitCodesAndDiagnostics(t *testing.T) {
 }
 
 func TestCLIDisposeSupportsDocumentedArgumentOrder(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	ids := []string{"obs_1", "evt_open", "evt_dispose"}
 	next := 0
 	application := app.New(repo, cliContext{}).
@@ -122,7 +122,7 @@ func TestCLIDisposeSupportsDocumentedArgumentOrder(t *testing.T) {
 }
 
 func TestCLIAddAcceptsLiteralUserText(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	ids := []string{"obs_1", "evt_open"}
 	next := 0
 	application := app.New(repo, cliContext{}).
@@ -143,7 +143,7 @@ func TestCLIAddAcceptsLiteralUserText(t *testing.T) {
 }
 
 func TestCLIInputJSONRejectsTrailingContent(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	application := app.New(repo, cliContext{})
 	body := `{"expected":"e","observed":"o","impact":"i","locus":"repo"} {"expected":"ignored","observed":"ignored","impact":"ignored","locus":"repo"}`
 	var stdout, stderr bytes.Buffer
@@ -154,7 +154,7 @@ func TestCLIInputJSONRejectsTrailingContent(t *testing.T) {
 }
 
 func TestCLIInputJSONRejectsExplicitEmptyCaptureFlag(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	application := app.New(repo, cliContext{})
 	body := `{"expected":"e","observed":"o","impact":"i","locus":"repo"}`
 	var stdout, stderr bytes.Buffer
@@ -165,7 +165,7 @@ func TestCLIInputJSONRejectsExplicitEmptyCaptureFlag(t *testing.T) {
 }
 
 func TestCLIInputJSONDecodeErrorDoesNotEchoUnknownField(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	application := app.New(repo, cliContext{})
 	body := `{"expected":"e","observed":"o","impact":"i","locus":"repo","authorization=Basic dXNlcjpwYXNz":"secret"}`
 	var stdout, stderr bytes.Buffer

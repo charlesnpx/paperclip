@@ -11,23 +11,54 @@ import (
 	"github.com/charlesnpx/paperclip/internal/domain"
 )
 
-func TestNewDefaultUsesLowercasePapercutDirectory(t *testing.T) {
+func TestNewDefaultUsesPaperclipDirectory(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("PAPERCLIP_HOME", "")
 	t.Setenv("PAPERCUT_HOME", "")
 
 	repo, err := NewDefault()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(home, "papercut", "PAPERCUTS.md")
+	want := filepath.Join(home, "paperclip", "PAPERCLIP.md")
+	if repo.Path() != want {
+		t.Fatalf("default path = %q, want %q", repo.Path(), want)
+	}
+}
+
+func TestNewDefaultUsesPaperclipHomeBeforeDeprecatedPapercutHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PAPERCLIP_HOME", filepath.Join(home, "new"))
+	t.Setenv("PAPERCUT_HOME", filepath.Join(home, "old"))
+
+	repo, err := NewDefault()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, "new", "PAPERCLIP.md")
+	if repo.Path() != want {
+		t.Fatalf("default path = %q, want %q", repo.Path(), want)
+	}
+}
+
+func TestNewDefaultAcceptsDeprecatedPapercutHomeFallback(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PAPERCLIP_HOME", "")
+	t.Setenv("PAPERCUT_HOME", filepath.Join(home, "old"))
+
+	repo, err := NewDefault()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, "old", "PAPERCLIP.md")
 	if repo.Path() != want {
 		t.Fatalf("default path = %q, want %q", repo.Path(), want)
 	}
 }
 
 func TestCommitWritesAtomicallyWithPermissions(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md")
+	path := filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md")
 	repo := New(path)
 	event := eventForTest(t, "evt_1", "obs_1")
 
@@ -67,14 +98,14 @@ func TestCommitWritesAtomicallyWithPermissions(t *testing.T) {
 }
 
 func TestExistingPublicLedgerParentIsRejectedWithoutChmod(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "Papercuts")
+	dir := filepath.Join(t.TempDir(), "paperclip")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(dir, "PAPERCUTS.md")
+	path := filepath.Join(dir, "PAPERCLIP.md")
 	_, err := New(path).Read(time.Second)
 	if err == nil || !strings.Contains(err.Error(), "must not be group or other accessible") {
 		t.Fatalf("expected permission rejection, got %v", err)
@@ -89,22 +120,22 @@ func TestExistingPublicLedgerParentIsRejectedWithoutChmod(t *testing.T) {
 }
 
 func TestExistingPrivateLedgerParentIsAccepted(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "Papercuts")
+	dir := filepath.Join(t.TempDir(), "paperclip")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(dir, "PAPERCUTS.md")
+	path := filepath.Join(dir, "PAPERCLIP.md")
 	if _, err := New(path).Read(time.Second); err != nil {
 		t.Fatalf("read should accept private parent: %v", err)
 	}
 }
 
 func TestMalformedLedgerFailsClosedWithoutWriting(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "Papercuts")
+	dir := filepath.Join(t.TempDir(), "paperclip")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(dir, "PAPERCUTS.md")
+	path := filepath.Join(dir, "PAPERCLIP.md")
 	original := []byte("# wrong\n```json\n{\"secret\":\"token=ghp_abcdefghijklmnopqrstuvwxyz123456\"}\n```\n")
 	if err := os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
@@ -164,7 +195,7 @@ func TestAppendBlocksInsertsNewlineAfterClosingFenceAtEOF(t *testing.T) {
 }
 
 func TestCrashBeforeRenameLeavesOriginalLedger(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md")
+	path := filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md")
 	repo := NewWithHook(path, func(string) error {
 		return errors.New("simulated crash before rename")
 	})
@@ -189,7 +220,7 @@ func TestCrashBeforeRenameLeavesOriginalLedger(t *testing.T) {
 }
 
 func TestLockTimeout(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md")
+	path := filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md")
 	if err := ensureDir(filepath.Dir(path)); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +237,7 @@ func TestLockTimeout(t *testing.T) {
 }
 
 func TestRejectsSymlinkLedgerPath(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "Papercuts")
+	dir := filepath.Join(t.TempDir(), "paperclip")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +245,7 @@ func TestRejectsSymlinkLedgerPath(t *testing.T) {
 	if err := os.WriteFile(target, []byte(Header), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	link := filepath.Join(dir, "PAPERCUTS.md")
+	link := filepath.Join(dir, "PAPERCLIP.md")
 	if err := os.Symlink(target, link); err != nil {
 		t.Fatal(err)
 	}
@@ -225,11 +256,11 @@ func TestRejectsSymlinkLedgerPath(t *testing.T) {
 }
 
 func TestPreservesStricterExistingFilePermissions(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "Papercuts")
+	dir := filepath.Join(t.TempDir(), "paperclip")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(dir, "PAPERCUTS.md")
+	path := filepath.Join(dir, "PAPERCLIP.md")
 	if err := os.WriteFile(path, []byte(Header), 0o400); err != nil {
 		t.Fatal(err)
 	}

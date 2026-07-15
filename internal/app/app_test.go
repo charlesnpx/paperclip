@@ -20,7 +20,7 @@ func (f fixedContext) Current() (domain.Context, error) {
 }
 
 func TestAddDedupeSuggestionsAndIdempotency(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	ids := []string{"obs_1", "evt_1", "evt_2", "evt_3"}
 	next := 0
 	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "repo-0123456789abcdef"}}).
@@ -84,7 +84,7 @@ func TestAddDedupeSuggestionsAndIdempotency(t *testing.T) {
 }
 
 func TestTransitions(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	ids := []string{"obs_1", "evt_open", "evt_claim", "evt_verify"}
 	next := 0
 	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}).
@@ -110,7 +110,7 @@ func TestTransitions(t *testing.T) {
 }
 
 func TestAddStoresLiteralUserTextWithoutContentScanning(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}})
 	observed := "fetch failed for https://build:placeholder@registry.example/package with token=ghp_abcdefghijklmnopqrstuvwxyz123456"
 
@@ -134,7 +134,7 @@ func TestAddStoresLiteralUserTextWithoutContentScanning(t *testing.T) {
 }
 
 func TestListRejectsInvalidRepoFilter(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}})
 	if _, err := application.List(QueryOptions{Repo: "curent"}); err == nil || !errors.Is(err, ErrUsage) {
 		t.Fatalf("expected usage error, got %v", err)
@@ -145,7 +145,7 @@ func TestListRejectsInvalidRepoFilter(t *testing.T) {
 }
 
 func TestDuplicateCanPersistIdempotencyBindingWithoutSuggestion(t *testing.T) {
-	repo := ledger.New(filepath.Join(t.TempDir(), "Papercuts", "PAPERCUTS.md"))
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
 	ids := []string{"obs_1", "evt_open", "evt_bind"}
 	next := 0
 	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}).

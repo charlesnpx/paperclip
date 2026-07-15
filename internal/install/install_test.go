@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -22,8 +23,22 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 	if result.Schema != 1 || result.Name != "paperclip" || result.Kind != "delegated" || result.Operation != "plan" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
-	if len(result.Targets["claude"].Files) != 0 || len(result.Targets["codex"].Files) != 0 {
-		t.Fatalf("claude/codex should be empty: %+v", result.Targets)
+	claudeFiles := result.Targets["claude"].Files
+	if len(claudeFiles) != 2 {
+		t.Fatalf("claude files = %d", len(claudeFiles))
+	}
+	if claudeFiles[0].Path != filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md") {
+		t.Fatalf("claude skill path = %q", claudeFiles[0].Path)
+	}
+	if claudeFiles[1].Path != filepath.Join(root, ".claude", "rules", "paperclip.md") {
+		t.Fatalf("claude rule path = %q", claudeFiles[1].Path)
+	}
+	codexFiles := result.Targets["codex"].Files
+	if len(codexFiles) != 1 {
+		t.Fatalf("codex files = %d", len(codexFiles))
+	}
+	if codexFiles[0].Path != filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md") {
+		t.Fatalf("codex skill path = %q", codexFiles[0].Path)
 	}
 	toolFiles := result.Targets["tools"].Files
 	if len(toolFiles) != 1 {
@@ -35,9 +50,15 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".local")); !os.IsNotExist(err) {
 		t.Fatalf("plan should not create staging path, stat err=%v", err)
 	}
+	if _, err := os.Stat(filepath.Join(root, ".codex")); !os.IsNotExist(err) {
+		t.Fatalf("plan should not create codex path, stat err=%v", err)
+	}
+	if len(result.Notices) != 1 || !strings.Contains(result.Notices[0], "add this text") {
+		t.Fatalf("expected codex notice, got %#v", result.Notices)
+	}
 }
 
-func TestCodexInstallTargetIsEmptyAndDoesNotWrite(t *testing.T) {
+func TestCodexInstallTargetWritesExplicitUseSkill(t *testing.T) {
 	root := t.TempDir()
 	exe := filepath.Join(root, "papercut")
 	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
@@ -47,8 +68,72 @@ func TestCodexInstallTargetIsEmptyAndDoesNotWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Targets) != 1 || len(result.Targets["codex"].Files) != 0 {
+	if len(result.Targets) != 1 || len(result.Targets["codex"].Files) != 1 {
 		t.Fatalf("unexpected targets: %+v", result.Targets)
+	}
+	path := filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "allow_implicit_invocation: false") {
+		t.Fatalf("codex skill is missing explicit invocation policy:\n%s", string(body))
+	}
+	if result.Targets["codex"].Files[0].SHA256 == "" {
+		t.Fatalf("install result should include sha: %+v", result.Targets["codex"].Files[0])
+	}
+}
+
+func TestCodexUninstallDoesNotEmitInstallNotice(t *testing.T) {
+	root := t.TempDir()
+	exe := filepath.Join(root, "papercut")
+	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Execute(Options{Operation: "uninstall", Target: "codex", InstallRoot: root, Executable: exe})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Notices) != 0 {
+		t.Fatalf("uninstall notices = %#v", result.Notices)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected skill file removed, stat err=%v", err)
+	}
+}
+
+func TestClaudeInstallTargetWritesSkillAndRule(t *testing.T) {
+	root := t.TempDir()
+	exe := filepath.Join(root, "papercut")
+	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Execute(Options{Operation: "install", Target: "claude", InstallRoot: root, Executable: exe})
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := result.Targets["claude"].Files
+	if len(files) != 2 {
+		t.Fatalf("claude files = %d", len(files))
+	}
+	for _, path := range []string{
+		filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md"),
+		filepath.Join(root, ".claude", "rules", "paperclip.md"),
+	} {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "Paperclip") && !strings.Contains(string(body), "paperclip") {
+			t.Fatalf("unexpected claude payload at %s:\n%s", path, string(body))
+		}
 	}
 }
 
@@ -68,7 +153,7 @@ func TestWrapperWorksOutsideRepository(t *testing.T) {
 	if err := json.Unmarshal(bytes.TrimSpace(out), &result); err != nil {
 		t.Fatalf("decode output: %v\n%s", err, string(out))
 	}
-	if result.Operation != "plan" || len(result.Targets["codex"].Files) != 0 {
+	if result.Operation != "plan" || len(result.Targets["codex"].Files) != 1 {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 }

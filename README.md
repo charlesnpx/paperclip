@@ -6,8 +6,11 @@ resolving operational friction encountered by coding agents.
 The ledger is local-first and personal:
 
 ```text
-${PAPERCUT_HOME:-~/papercut}/PAPERCUTS.md
+${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md
 ```
+
+`PAPERCUT_HOME` is still accepted as a deprecated fallback when
+`PAPERCLIP_HOME` is unset.
 
 The ledger is append-only Markdown containing schema-versioned fenced JSON
 events. `papercut` validates the complete ledger before every write, appends new
