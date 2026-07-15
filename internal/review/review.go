@@ -98,7 +98,7 @@ Use ` + "`papercut`" + ` to record local operational friction instead of burying
 - For sensitive details, prefer ` + "`papercut add --input-json -`" + ` so values do not enter shell history.
 - Review active work blockers with ` + "`papercut review`" + `.
 - Mark lifecycle progress with ` + "`papercut claim-fixed <id>`" + `, ` + "`papercut verify-fixed <id>`" + `, or ` + "`papercut dispose <id> --reason ...`" + `.
-- Do not edit ` + "`PAPERCUTS.md`" + ` event blocks by hand.
+- Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
 `
 }
 
