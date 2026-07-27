@@ -15,7 +15,7 @@ func main() {
 	}
 	repo, err := ledger.NewDefault()
 	if err != nil {
-		_, _ = os.Stderr.WriteString("papercut: " + err.Error() + "\n")
+		_, _ = os.Stderr.WriteString("paperclip: " + err.Error() + "\n")
 		os.Exit(cli.ExitUnexpected)
 	}
 	application := app.New(repo, repoctx.NewResolver(""))

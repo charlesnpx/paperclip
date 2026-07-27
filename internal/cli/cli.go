@@ -34,7 +34,7 @@ type Application interface {
 
 func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, application Application) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "papercut: command is required")
+		fmt.Fprintln(stderr, "paperclip: command is required")
 		return ExitUsage
 	}
 	switch args[0] {
@@ -55,7 +55,7 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, app
 	case "delegate-install":
 		return RunInstaller(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintln(stderr, "papercut: unknown command")
+		fmt.Fprintln(stderr, "paperclip: unknown command")
 		return ExitUsage
 	}
 }
@@ -262,7 +262,7 @@ func runInstructions(args []string, stdout io.Writer, stderr io.Writer) int {
 }
 
 func diagnostic(stderr io.Writer, err error) int {
-	fmt.Fprintln(stderr, "papercut:", err)
+	fmt.Fprintln(stderr, "paperclip:", err)
 	return app.ExitCode(err)
 }
 

@@ -12,7 +12,7 @@ import (
 
 func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "papercut")
+	exe := filepath.Join(root, "paperclip")
 	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 	if len(toolFiles) != 1 {
 		t.Fatalf("tools files = %d", len(toolFiles))
 	}
-	if toolFiles[0].Path != filepath.Join(root, ".local", "bin", "papercut") {
+	if toolFiles[0].Path != filepath.Join(root, ".local", "bin", "paperclip") {
 		t.Fatalf("tool path = %q", toolFiles[0].Path)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".local")); !os.IsNotExist(err) {
@@ -60,7 +60,7 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 
 func TestCodexInstallTargetWritesExplicitUseSkill(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "papercut")
+	exe := filepath.Join(root, "paperclip")
 	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -79,6 +79,9 @@ func TestCodexInstallTargetWritesExplicitUseSkill(t *testing.T) {
 	if !strings.Contains(string(body), "allow_implicit_invocation: false") {
 		t.Fatalf("codex skill is missing explicit invocation policy:\n%s", string(body))
 	}
+	if !strings.Contains(string(body), "paperclip add") || strings.Contains(string(body), "papercut add") {
+		t.Fatalf("codex skill should use the paperclip command:\n%s", string(body))
+	}
 	if result.Targets["codex"].Files[0].SHA256 == "" {
 		t.Fatalf("install result should include sha: %+v", result.Targets["codex"].Files[0])
 	}
@@ -86,7 +89,7 @@ func TestCodexInstallTargetWritesExplicitUseSkill(t *testing.T) {
 
 func TestCodexUninstallDoesNotEmitInstallNotice(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "papercut")
+	exe := filepath.Join(root, "paperclip")
 	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +114,7 @@ func TestCodexUninstallDoesNotEmitInstallNotice(t *testing.T) {
 
 func TestClaudeInstallTargetWritesSkillAndRule(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "papercut")
+	exe := filepath.Join(root, "paperclip")
 	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -133,6 +136,9 @@ func TestClaudeInstallTargetWritesSkillAndRule(t *testing.T) {
 		}
 		if !strings.Contains(string(body), "Paperclip") && !strings.Contains(string(body), "paperclip") {
 			t.Fatalf("unexpected claude payload at %s:\n%s", path, string(body))
+		}
+		if strings.HasSuffix(path, "SKILL.md") && (!strings.Contains(string(body), "paperclip add") || strings.Contains(string(body), "papercut add")) {
+			t.Fatalf("claude skill should use the paperclip command at %s:\n%s", path, string(body))
 		}
 	}
 }
@@ -160,7 +166,7 @@ func TestWrapperWorksOutsideRepository(t *testing.T) {
 
 func TestAtomicFileWriteUsesVisibleTempAndReplacesMode(t *testing.T) {
 	dir := t.TempDir()
-	dst := filepath.Join(dir, "papercut")
+	dst := filepath.Join(dir, "paperclip")
 	if err := os.WriteFile(dst, []byte("old"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +192,7 @@ func TestAtomicFileWriteUsesVisibleTempAndReplacesMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if entry.Name() != "papercut" {
+		if entry.Name() != "paperclip" {
 			t.Fatalf("unexpected leftover temp entry: %s", entry.Name())
 		}
 		if len(entry.Name()) > 0 && entry.Name()[0] == '.' {
@@ -197,7 +203,7 @@ func TestAtomicFileWriteUsesVisibleTempAndReplacesMode(t *testing.T) {
 
 func TestConflictingOperationFlagsAreRejected(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "papercut")
+	exe := filepath.Join(root, "paperclip")
 	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +219,7 @@ func TestConflictingOperationFlagsAreRejected(t *testing.T) {
 
 func TestFalseOperationFlagDoesNotSelectOperation(t *testing.T) {
 	root := t.TempDir()
-	exe := filepath.Join(root, "papercut")
+	exe := filepath.Join(root, "paperclip")
 	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}

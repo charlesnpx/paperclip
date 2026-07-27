@@ -90,14 +90,14 @@ func RenderJSON(value any) (string, error) {
 }
 
 func InstructionsAgents() string {
-	return `## papercut
+	return `## Paperclip
 
-Use ` + "`papercut`" + ` to record local operational friction instead of burying it in chat.
+Use ` + "`paperclip`" + ` to record local operational friction instead of burying it in chat.
 
-- Add an observation with ` + "`papercut add --expected ... --observed ... --impact ... --locus repo`" + `.
-- For sensitive details, prefer ` + "`papercut add --input-json -`" + ` so values do not enter shell history.
-- Review active work blockers with ` + "`papercut review`" + `.
-- Mark lifecycle progress with ` + "`papercut claim-fixed <id>`" + `, ` + "`papercut verify-fixed <id>`" + `, or ` + "`papercut dispose <id> --reason ...`" + `.
+- Add an observation with ` + "`paperclip add --expected ... --observed ... --impact ... --locus repo`" + `.
+- For sensitive details, prefer ` + "`paperclip add --input-json -`" + ` so values do not enter shell history.
+- Review active work blockers with ` + "`paperclip review`" + `.
+- Mark lifecycle progress with ` + "`paperclip claim-fixed <id>`" + `, ` + "`paperclip verify-fixed <id>`" + `, or ` + "`paperclip dispose <id> --reason ...`" + `.
 - Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
 `
 }

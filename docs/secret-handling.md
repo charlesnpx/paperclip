@@ -2,7 +2,7 @@
 
 Paperclip is a local personal ledger. It does not provide runtime secret
 detection, redaction, encryption, or leak prevention in the current version.
-Values passed to `papercut add` are stored as user-provided operational notes in
+Values passed to `paperclip add` are stored as user-provided operational notes in
 the local ledger at:
 
 ```text
@@ -18,7 +18,7 @@ session cookies, signed URLs, customer secrets, or other sensitive material into
 Paperclip. Use it at your own risk.
 
 For sensitive reports, prefer `--input-json -` over shell flags, and provide the
-JSON through stdin after `papercut` starts or through a protected input file. Do
+JSON through stdin after `paperclip` starts or through a protected input file. Do
 not embed the report body in the shell command, because that can still enter
 shell history. This only avoids one local exposure path; it does not make the
 ledger safe for secrets.

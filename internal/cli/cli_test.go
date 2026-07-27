@@ -66,6 +66,9 @@ func TestCLIExitCodesAndDiagnostics(t *testing.T) {
 	if code != ExitUsage {
 		t.Fatalf("usage code=%d stderr=%s", code, stderr.String())
 	}
+	if !strings.HasPrefix(stderr.String(), "paperclip:") {
+		t.Fatalf("usage diagnostic should use paperclip command name: %s", stderr.String())
+	}
 	stdout.Reset()
 	stderr.Reset()
 	code = Run([]string{"list", "--locus", "typo"}, strings.NewReader(""), &stdout, &stderr, application)

@@ -48,18 +48,18 @@ type Options struct {
 func Run(args []string, stdout io.Writer, stderr io.Writer, executable string) int {
 	opts, err := parse(args, executable)
 	if err != nil {
-		fmt.Fprintln(stderr, "papercut install:", err)
+		fmt.Fprintln(stderr, "paperclip install:", err)
 		return 2
 	}
 	result, err := Execute(opts)
 	if err != nil {
-		fmt.Fprintln(stderr, "papercut install:", err)
+		fmt.Fprintln(stderr, "paperclip install:", err)
 		return 1
 	}
 	if opts.JSON {
 		body, err := json.Marshal(result)
 		if err != nil {
-			fmt.Fprintln(stderr, "papercut install:", err)
+			fmt.Fprintln(stderr, "paperclip install:", err)
 			return 1
 		}
 		fmt.Fprintln(stdout, string(body))
@@ -303,7 +303,7 @@ func toolPath(root string) (string, error) {
 		}
 		root = home
 	}
-	return filepath.Join(root, ".local", "bin", "papercut"), nil
+	return filepath.Join(root, ".local", "bin", "paperclip"), nil
 }
 
 func installTool(src string, dst string) (string, error) {
@@ -411,19 +411,19 @@ metadata:
 
 # Paperclip
 
-Use the local ` + "`papercut`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
+Use the local ` + "`paperclip`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
 
 Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md`" + `. It stores the text provided by the user or agent; do not paste secrets.
 
 ## Workflows
 
-- Add a papercut: run ` + "`papercut add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
-- Add sensitive details: prefer ` + "`papercut add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
-- Review current repo: run ` + "`papercut review`" + ` from the repository being worked on.
-- List everything: run ` + "`papercut list --repo all`" + `.
-- Dispose noise: run ` + "`papercut dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
+- Add a papercut: run ` + "`paperclip add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
+- Add sensitive details: prefer ` + "`paperclip add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
+- Review current repo: run ` + "`paperclip review`" + ` from the repository being worked on.
+- List everything: run ` + "`paperclip list --repo all`" + `.
+- Dispose noise: run ` + "`paperclip dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
 
-Use stdout from ` + "`papercut`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
+Use stdout from ` + "`paperclip`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
 `
 
 const paperclipSkill = `---
@@ -433,19 +433,19 @@ description: Explicit-use Paperclip workflows for recording and reviewing local 
 
 # Paperclip
 
-Use the local ` + "`papercut`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
+Use the local ` + "`paperclip`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
 
 Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md`" + `. It stores the text provided by the user or agent; do not paste secrets.
 
 ## Workflows
 
-- Add a papercut: run ` + "`papercut add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
-- Add sensitive details: prefer ` + "`papercut add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
-- Review current repo: run ` + "`papercut review`" + ` from the repository being worked on.
-- List everything: run ` + "`papercut list --repo all`" + `.
-- Dispose noise: run ` + "`papercut dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
+- Add a papercut: run ` + "`paperclip add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
+- Add sensitive details: prefer ` + "`paperclip add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
+- Review current repo: run ` + "`paperclip review`" + ` from the repository being worked on.
+- List everything: run ` + "`paperclip list --repo all`" + `.
+- Dispose noise: run ` + "`paperclip dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
 
-Use stdout from ` + "`papercut`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
+Use stdout from ` + "`paperclip`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
 `
 
 const claudeRule = `Use the Paperclip skill when operational friction, repo issues, local machine issues, harness/tool/model failures, broken links, or repeated process blockers should be recorded for later review. Do not paste secrets; Paperclip stores local notes as provided.

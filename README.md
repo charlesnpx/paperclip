@@ -1,7 +1,7 @@
 # paperclip
 
-`paperclip` provides the local `papercut` CLI for recording, reviewing, and
-resolving operational friction encountered by coding agents.
+`paperclip` is a local CLI for recording, reviewing, and resolving operational
+friction encountered by coding agents.
 
 The ledger is local-first and personal:
 
@@ -13,21 +13,21 @@ ${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md
 `PAPERCLIP_HOME` is unset.
 
 The ledger is append-only Markdown containing schema-versioned fenced JSON
-events. `papercut` validates the complete ledger before every write, appends new
+events. `paperclip` validates the complete ledger before every write, appends new
 events through a same-directory temporary file, fsyncs the file, atomically
 renames it, and fsyncs the directory.
 
 ## Commands
 
 ```sh
-papercut add --expected "..." --observed "..." --impact "..." --locus repo
-papercut add --input-json -
-papercut list
-papercut review
-papercut claim-fixed <observation-id>
-papercut verify-fixed <observation-id>
-papercut dispose <observation-id> --reason "not actionable"
-papercut instructions --format agents
+paperclip add --expected "..." --observed "..." --impact "..." --locus repo
+paperclip add --input-json -
+paperclip list
+paperclip review
+paperclip claim-fixed <observation-id>
+paperclip verify-fixed <observation-id>
+paperclip dispose <observation-id> --reason "not actionable"
+paperclip instructions --format agents
 ```
 
 `add` requires `expected`, `observed`, `impact`, and `locus`. Optional fields are
@@ -36,11 +36,11 @@ papercut instructions --format agents
 are `critical`, `high`, `medium`, `low`, and `info`; missing severity defaults to
 `medium`.
 
-For sensitive reports, run `papercut` first and enter JSON through stdin so the
+For sensitive reports, run `paperclip` first and enter JSON through stdin so the
 report body does not enter shell history:
 
 ```sh
-$ papercut add --input-json -
+$ paperclip add --input-json -
 {
   "expected": "agent can run tests",
   "observed": "test harness exits before compiling",
@@ -54,7 +54,7 @@ $ papercut add --input-json -
 
 Then press `Ctrl-D` to finish stdin.
 
-`papercut` does not perform runtime secret detection or redaction. It stores the
+`paperclip` does not perform runtime secret detection or redaction. It stores the
 text you provide in a local personal ledger, so do not paste secrets. See
 [docs/secret-handling.md](docs/secret-handling.md) for the current risk model
 and the future Gitleaks direction.
@@ -65,11 +65,11 @@ and the future Gitleaks direction.
 default. Filters:
 
 ```sh
-papercut list --repo current
-papercut list --repo repo-0123456789abcdef
-papercut list --repo none
-papercut list --repo all
-papercut review --locus harness --scope "go test" --json
+paperclip list --repo current
+paperclip list --repo repo-0123456789abcdef
+paperclip list --repo none
+paperclip list --repo all
+paperclip review --locus harness --scope "go test" --json
 ```
 
 Repository IDs are sanitized. Remote URLs are reduced to a non-secret hash of
@@ -89,4 +89,4 @@ without a remote use `git-local:no-remote`. Directories outside Git use `none`.
 
 ## Supported Targets
 
-`papercut` is supported on Darwin and Linux for `amd64` and `arm64`.
+`paperclip` is supported on Darwin and Linux for `amd64` and `arm64`.

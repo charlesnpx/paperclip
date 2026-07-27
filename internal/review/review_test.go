@@ -32,3 +32,10 @@ func TestGroupsDeterministically(t *testing.T) {
 		}
 	}
 }
+
+func TestInstructionsAgentsUsesPaperclipCommand(t *testing.T) {
+	instructions := InstructionsAgents()
+	if !strings.Contains(instructions, "paperclip add") || strings.Contains(instructions, "papercut add") {
+		t.Fatalf("instructions should use the paperclip command:\n%s", instructions)
+	}
+}
