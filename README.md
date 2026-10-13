@@ -17,6 +17,34 @@ events. `paperclip` validates the complete ledger before every write, appends ne
 events through a same-directory temporary file, fsyncs the file, atomically
 renames it, and fsyncs the directory.
 
+## Agent Skills
+
+The installer supplies two skills for Claude Code and Codex, plus the
+`paperclip` binary:
+
+- `paperclip` records operational friction with `paperclip add`.
+- `paperclip:skill-feedback` records feedback about a skill with
+  `paperclip feedback add`.
+
+Both skills are write-only: they tell agents to record observations and continue,
+and never to list or review the ledger unless the user asks. Their descriptions
+are short so agents can select them automatically without global `AGENTS.md` or
+`CLAUDE.md` instructions. Each skill loads its full instructions only when used.
+
+Install, upgrade, or remove them with mise-en-place:
+
+```sh
+mise-en-place install paperclip
+mise-en-place upgrade paperclip
+mise-en-place uninstall paperclip
+```
+
+The repository's `install-skill.sh` implements the mise-en-place delegated
+installer contract (`--plan`, `--install`, `--uninstall`, `--target`, `--json`,
+and `--install-root`). Earlier versions installed a `~/.claude/rules/paperclip.md`
+rule and asked users to paste instructions into global instruction files; those
+instructions can be removed after upgrading.
+
 ## Commands
 
 ```sh
@@ -27,7 +55,6 @@ paperclip review
 paperclip claim-fixed <observation-id>
 paperclip verify-fixed <observation-id>
 paperclip dispose <observation-id> --reason "not actionable"
-paperclip instructions --format agents
 ```
 
 `add` requires `expected`, `observed`, `impact`, and `locus`. Optional fields are
@@ -103,7 +130,6 @@ paperclip feedback config validate
 paperclip feedback list --skill relay:steer --json
 paperclip feedback review
 paperclip feedback dispose <observation-id> --reason 'obsolete'
-paperclip feedback instructions
 ```
 
 Optional capture fields: `category` (free-form), `workaround`, `suggestion`, `source`,
@@ -129,7 +155,7 @@ paperclip feedback --config /absolute/path/config.json check --skill relay:steer
 ```json
 {
   "includes": [],
-  "excludes": ["skill-feedback"]
+  "excludes": ["paperclip:skill-feedback"]
 }
 ```
 
@@ -165,15 +191,6 @@ associations introduce `paperclip.event.v2` events in the same append-only Markd
 format. Old binaries cannot read ledgers containing those events: upgrade all
 writers before capturing conversation references in an existing shared ledger.
 There is no migration or automatic rewrite of old fingerprints or request digests.
-
-The delegated installer supplies `paperclip` and `skill-feedback` skills for Claude
-Code and Codex, plus the Paperclip binary. It supports the mise-en-place plan,
-install, uninstall, target, JSON, and `--install-root` contract. The mise-en-place
-registry advertises both skill names under Paperclip's `provides`.
-
-Use `paperclip feedback instructions` to obtain the short instruction for global
-`CLAUDE.md` or `AGENTS.md`. The installer emits a reminder; it does not edit shared
-instruction files or create feedback configuration. See [the global snippets](docs/global-instructions.md).
 
 ## Exit Codes
 

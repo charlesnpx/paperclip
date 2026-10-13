@@ -125,20 +125,6 @@ func renderConversations(buffer *bytes.Buffer, observation domain.Observation) {
 	}
 }
 
-func InstructionsAgents() string {
-	return `## Paperclip
-
-Use ` + "`paperclip`" + ` to record local operational friction instead of burying it in chat.
-
-- Add an observation with ` + "`paperclip add --expected ... --observed ... --impact ... --locus repo`" + `.
-- For sensitive details, prefer ` + "`paperclip add --input-json -`" + ` so values do not enter shell history.
-- Review active work blockers with ` + "`paperclip review`" + `.
-- Mark lifecycle progress with ` + "`paperclip claim-fixed <id>`" + `, ` + "`paperclip verify-fixed <id>`" + `, or ` + "`paperclip dispose <id> --reason ...`" + `.
-- Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
-- Attach known conversation references with --harness, --session-id, --session-path, and --session-url. Missing references do not block recording; do not guess the current session or copy transcript contents.
-`
-}
-
 func oneLine(value string) string {
 	runes := []rune(value)
 	for i, r := range runes {

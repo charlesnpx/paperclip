@@ -23,22 +23,15 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 	if result.Schema != 1 || result.Name != "paperclip" || result.Kind != "delegated" || result.Operation != "plan" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
-	claudeFiles := result.Targets["claude"].Files
-	if len(claudeFiles) != 3 {
-		t.Fatalf("claude files = %d", len(claudeFiles))
-	}
-	if claudeFiles[1].Path != filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md") {
-		t.Fatalf("claude skill path = %q", claudeFiles[0].Path)
-	}
-	if claudeFiles[2].Path != filepath.Join(root, ".claude", "rules", "paperclip.md") {
-		t.Fatalf("claude rule path = %q", claudeFiles[1].Path)
-	}
-	codexFiles := result.Targets["codex"].Files
-	if len(codexFiles) != 2 {
-		t.Fatalf("codex files = %d", len(codexFiles))
-	}
-	if codexFiles[1].Path != filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md") {
-		t.Fatalf("codex skill path = %q", codexFiles[0].Path)
+	for _, target := range []string{"claude", "codex"} {
+		files := result.Targets[target].Files
+		want := []string{
+			filepath.Join(root, "."+target, "skills", "paperclip", "SKILL.md"),
+			filepath.Join(root, "."+target, "skills", "paperclip:skill-feedback", "SKILL.md"),
+		}
+		if len(files) != len(want) || files[0].Path != want[0] || files[1].Path != want[1] {
+			t.Fatalf("%s files = %+v", target, files)
+		}
 	}
 	toolFiles := result.Targets["tools"].Files
 	if len(toolFiles) != 1 {
@@ -53,37 +46,22 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".codex")); !os.IsNotExist(err) {
 		t.Fatalf("plan should not create codex path, stat err=%v", err)
 	}
-	if len(result.Notices) != 2 || !strings.Contains(result.Notices[0], "add this text") {
-		t.Fatalf("expected codex notice, got %#v", result.Notices)
+	if len(result.Notices) != 0 {
+		t.Fatalf("notices = %#v", result.Notices)
 	}
 }
 
-func TestCodexInstallTargetWritesExplicitUseSkill(t *testing.T) {
-	root := t.TempDir()
-	exe := filepath.Join(root, "paperclip")
-	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
-		t.Fatal(err)
+func TestSkillsAreImplicitAndWriteOnly(t *testing.T) {
+	for _, body := range []string{paperclipSkill, feedbackSkill} {
+		if strings.Contains(body, "allow_implicit_invocation") {
+			t.Fatalf("skills must be available for implicit use:\n%s", body)
+		}
+		if !strings.Contains(body, "unless the user") {
+			t.Fatalf("skills must forbid reading the ledger unless asked:\n%s", body)
+		}
 	}
-	result, err := Execute(Options{Operation: "install", Target: "codex", InstallRoot: root, Executable: exe})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Targets) != 1 || len(result.Targets["codex"].Files) != 2 {
-		t.Fatalf("unexpected targets: %+v", result.Targets)
-	}
-	path := filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md")
-	body, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(body), "allow_implicit_invocation: false") {
-		t.Fatalf("codex skill is missing explicit invocation policy:\n%s", string(body))
-	}
-	if !strings.Contains(string(body), "paperclip add") || strings.Contains(string(body), "papercut add") {
-		t.Fatalf("codex skill should use the paperclip command:\n%s", string(body))
-	}
-	if result.Targets["codex"].Files[0].SHA256 == "" {
-		t.Fatalf("install result should include sha: %+v", result.Targets["codex"].Files[0])
+	if !strings.Contains(paperclipSkill, "paperclip add") || !strings.Contains(feedbackSkill, "paperclip feedback add") {
+		t.Fatal("skills must document their capture command")
 	}
 }
 
@@ -109,37 +87,6 @@ func TestCodexUninstallDoesNotEmitInstallNotice(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("expected skill file removed, stat err=%v", err)
-	}
-}
-
-func TestClaudeInstallTargetWritesSkillAndRule(t *testing.T) {
-	root := t.TempDir()
-	exe := filepath.Join(root, "paperclip")
-	if err := os.WriteFile(exe, []byte("binary"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	result, err := Execute(Options{Operation: "install", Target: "claude", InstallRoot: root, Executable: exe})
-	if err != nil {
-		t.Fatal(err)
-	}
-	files := result.Targets["claude"].Files
-	if len(files) != 3 {
-		t.Fatalf("claude files = %d", len(files))
-	}
-	for _, path := range []string{
-		filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md"),
-		filepath.Join(root, ".claude", "rules", "paperclip.md"),
-	} {
-		body, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(body), "Paperclip") && !strings.Contains(string(body), "paperclip") {
-			t.Fatalf("unexpected claude payload at %s:\n%s", path, string(body))
-		}
-		if strings.HasSuffix(path, "SKILL.md") && (!strings.Contains(string(body), "paperclip add") || strings.Contains(string(body), "papercut add")) {
-			t.Fatalf("claude skill should use the paperclip command at %s:\n%s", path, string(body))
-		}
 	}
 }
 
