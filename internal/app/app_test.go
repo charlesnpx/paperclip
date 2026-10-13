@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -141,6 +142,39 @@ func TestListRejectsInvalidRepoFilter(t *testing.T) {
 	}
 	if _, err := application.List(QueryOptions{Repo: "repo-0123456789abcdef"}); err != nil {
 		t.Fatalf("valid repo filter rejected: %v", err)
+	}
+}
+
+func TestRepeatAfterDuplicateWindowCreatesObservation(t *testing.T) {
+	repo := ledger.New(filepath.Join(t.TempDir(), "paperclip", "PAPERCLIP.md"))
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	ids := 0
+	application := New(repo, fixedContext{ctx: domain.Context{RepoID: "none"}}).
+		WithClock(func() time.Time { return now }).
+		WithIDGenerator(func(prefix string) (string, error) {
+			ids++
+			return fmt.Sprintf("%s_%d", prefix, ids), nil
+		})
+	raw := domain.RawRequest{Expected: "e", Observed: "o", Impact: "i", Locus: "repo"}
+	first, err := application.Add(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(DuplicateWindow - time.Second)
+	repeat, err := application.Add(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !repeat.Duplicate || repeat.ObservationID != first.ObservationID {
+		t.Fatalf("expected duplicate inside window, got %+v", repeat)
+	}
+	now = now.Add(time.Second)
+	later, err := application.Add(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !later.Created || later.ObservationID == first.ObservationID {
+		t.Fatalf("expected new observation after window, got %+v", later)
 	}
 }
 

@@ -124,13 +124,17 @@ func TestApplyEventsRejectsStaleDerivedFields(t *testing.T) {
 	}
 }
 
-func TestApplyEventsRejectsDuplicateActiveFingerprints(t *testing.T) {
+func TestApplyEventsAllowsRepeatedFingerprints(t *testing.T) {
 	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
 	payload := openedPayload("expected", "observed", "impact", LocusRepo, SeverityMedium, "", "none")
 	first := mustEvent(t, "evt_1", now, EventObservationOpened, "obs_1", "", Context{RepoID: "none"}, payload)
 	second := mustEvent(t, "evt_2", now.Add(time.Second), EventObservationOpened, "obs_2", "", Context{RepoID: "none"}, payload)
-	if _, err := ApplyEvents([]Event{first, second}); err == nil || !strings.Contains(err.Error(), "duplicate active fingerprint") {
-		t.Fatalf("expected duplicate active fingerprint rejection, got %v", err)
+	snapshot, err := ApplyEvents([]Event{first, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latest, ok := snapshot.LatestObservationByFingerprint(payload.Fingerprint); !ok || latest.ID != "obs_2" {
+		t.Fatalf("latest = %+v, %v", latest, ok)
 	}
 }
 

@@ -14,14 +14,14 @@ var repoIDPattern = regexp.MustCompile(`^(none|git-local:no-remote|repo-[0-9a-f]
 type Snapshot struct {
 	events              []Event
 	observations        map[string]Observation
-	activeByFingerprint map[string]string
+	latestByFingerprint map[string]string
 	idempotency         map[string]IdempotencyRecord
 }
 
 func EmptySnapshot() Snapshot {
 	return Snapshot{
 		observations:        map[string]Observation{},
-		activeByFingerprint: map[string]string{},
+		latestByFingerprint: map[string]string{},
 		idempotency:         map[string]IdempotencyRecord{},
 	}
 }
@@ -116,11 +116,8 @@ func (s *Snapshot) apply(event Event) error {
 			Scope:       payload.Scope,
 			Fingerprint: payload.Fingerprint,
 		}
-		if existingID, exists := s.activeByFingerprint[obs.Fingerprint]; exists {
-			return fmt.Errorf("duplicate active fingerprint already belongs to %s", existingID)
-		}
 		s.observations[obs.ID] = obs
-		s.activeByFingerprint[obs.Fingerprint] = obs.ID
+		s.latestByFingerprint[obs.Fingerprint] = obs.ID
 	case EventRemediationSuggested:
 		payload, err := DecodePayload[SuggestionPayload](event)
 		if err != nil {
@@ -171,11 +168,9 @@ func (s *Snapshot) apply(event Event) error {
 		if obs.State != StateOpen {
 			return errors.New("invalid transition to fixed-claimed")
 		}
-		delete(s.activeByFingerprint, obs.Fingerprint)
 		obs.State = StateFixedClaimed
 		obs.UpdatedAt = event.OccurredAt
 		s.observations[event.SubjectID] = obs
-		s.activeByFingerprint[obs.Fingerprint] = obs.ID
 	case EventFixedVerified:
 		if !isObjectPayload(event.Payload) {
 			return errors.New("payload must be an object")
@@ -190,7 +185,6 @@ func (s *Snapshot) apply(event Event) error {
 		if obs.State != StateFixedClaimed {
 			return errors.New("invalid transition to fixed-verified")
 		}
-		delete(s.activeByFingerprint, obs.Fingerprint)
 		obs.State = StateFixedVerified
 		obs.UpdatedAt = event.OccurredAt
 		s.observations[event.SubjectID] = obs
@@ -209,7 +203,6 @@ func (s *Snapshot) apply(event Event) error {
 		if obs.State != StateOpen && obs.State != StateFixedClaimed {
 			return errors.New("invalid transition to disposed")
 		}
-		delete(s.activeByFingerprint, obs.Fingerprint)
 		obs.State = StateDisposed
 		obs.UpdatedAt = event.OccurredAt
 		obs.DisposedReason = payload.Reason
@@ -250,8 +243,8 @@ func (s Snapshot) Observation(id string) (Observation, bool) {
 	return obs.Clone(), true
 }
 
-func (s Snapshot) ActiveObservationByFingerprint(fingerprint string) (Observation, bool) {
-	id, ok := s.activeByFingerprint[fingerprint]
+func (s Snapshot) LatestObservationByFingerprint(fingerprint string) (Observation, bool) {
+	id, ok := s.latestByFingerprint[fingerprint]
 	if !ok {
 		return Observation{}, false
 	}
