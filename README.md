@@ -37,10 +37,10 @@ are `critical`, `high`, `medium`, `low`, and `info`; missing severity defaults t
 `medium`.
 
 Each report creates a new observation, so repeated reports of the same problem
-remain visible as separate entries. The exception is an exact repeat of a report
-recorded less than 10 minutes earlier, which returns the existing observation
-with `duplicate: true`. A reused idempotency key always returns the original
-observation.
+remain visible as separate entries. The exception is a report whose fields match an active
+observation created less than 10 minutes earlier, which returns that observation
+with `duplicate: true`. Reusing an idempotency key with the same request content
+returns the original observation.
 
 For sensitive reports, run `paperclip` first and enter JSON through stdin so the
 report body does not enter shell history:

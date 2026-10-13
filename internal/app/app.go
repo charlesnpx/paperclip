@@ -86,7 +86,7 @@ func (a *App) Add(raw domain.RawRequest) (domain.CommitResult, error) {
 			}
 		}
 
-		if existing, ok := snapshot.LatestObservationByFingerprint(normalized.Fingerprint); ok && a.clock().Sub(existing.CreatedAt) < DuplicateWindow {
+		if existing, ok := snapshot.LatestObservationByFingerprint(normalized.Fingerprint); ok && existing.Active() && a.clock().Sub(existing.CreatedAt) < DuplicateWindow {
 			var events []domain.Event
 			result := domain.CommitResult{ObservationID: existing.ID, Duplicate: true}
 			if normalized.Suggestion != "" && !existing.HasSuggestion(normalized.Suggestion) {
