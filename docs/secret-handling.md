@@ -11,6 +11,15 @@ ${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md
 
 `PAPERCUT_HOME` remains a deprecated fallback when `PAPERCLIP_HOME` is unset.
 
+Skill feedback is stored separately at
+`${PAPERCLIP_FEEDBACK_HOME:-~/paperclip/skill-feedback}/PAPERCLIP.md` with the same
+plaintext storage policy. Optional conversation references on either workflow
+store the supplied harness, session ID, local transcript path, or URL verbatim
+after whitespace normalization. Paths may reveal usernames and project names;
+URLs must not contain credentials or signed access tokens. The CLI does not read
+transcripts, verify their existence, or copy conversation contents. References
+are optional and are included in text and JSON review output.
+
 The ledger is created with private file permissions where the platform supports
 them, and repository context is sanitized before it is persisted. That is not a
 secret-management boundary. Do not paste passwords, tokens, private keys,

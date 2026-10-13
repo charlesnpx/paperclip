@@ -83,6 +83,98 @@ their credential-stripped, query-free host/path value; raw remotes, usernames,
 tokens, hostnames, and working-directory paths are never persisted. Repositories
 without a remote use `git-local:no-remote`. Directories outside Git use `none`.
 
+## Skill Feedback
+
+`paperclip feedback` records free-form feedback about skills in a separate ledger:
+
+```text
+${PAPERCLIP_FEEDBACK_HOME:-~/paperclip/skill-feedback}/PAPERCLIP.md
+```
+
+It is independent of `PAPERCLIP_HOME` and does not require mise-en-place at runtime.
+Use the exact exposed skill name, including namespaces. Only a name and note are
+required; successful tasks can still produce useful feedback.
+
+```sh
+paperclip feedback add --skill relay:steer --note 'The command worked, but required repeating the session ID.'
+paperclip feedback add --input-json -
+paperclip feedback check --skill relay:steer
+paperclip feedback config validate
+paperclip feedback list --skill relay:steer --json
+paperclip feedback review
+paperclip feedback dispose <observation-id> --reason 'obsolete'
+paperclip feedback instructions
+```
+
+Optional capture fields: `category` (free-form), `workaround`, `suggestion`, `source`,
+`version`, `severity`, and `idempotency_key`. CLI flags use hyphens; JSON keys use
+underscores. JSON input cannot be mixed with capture flags. Severity defaults to
+`medium`. `claim-fixed` and `verify-fixed` share the general Paperclip lifecycle.
+Review includes all repositories by default, groups feedback by skill, and accepts
+`--repo current` to narrow the results. List and review show active observations.
+
+### Capture Configuration
+
+The default configuration is `config.json` in the feedback directory.
+
+The ledger requires its directory to be private. Capture creates it with mode
+`0700`; use that mode if creating the directory manually before writing config.
+
+To override the configuration path:
+
+```sh
+paperclip feedback --config /absolute/path/config.json check --skill relay:steer
+```
+
+```json
+{
+  "includes": [],
+  "excludes": ["skill-feedback"]
+}
+```
+
+Missing or empty `includes` allows all skills. Missing or empty `excludes` excludes
+none. Exclusions take precedence. Names match exactly and case-sensitively: `relay`
+does not match `relay:steer`. No package expansion, registry membership validation,
+or harness-specific configuration is performed.
+
+A missing default file allows all skills; an explicit path must exist. Unknown
+properties, null lists, incorrect types, and empty or whitespace-containing names
+are usage errors. `config validate` prints the effective configuration as JSON;
+`check` reports eligibility. Neither touches the ledger. Excluded capture returns
+exit code 0 with `skipped: true` and a reason, without ledger changes. Configuration
+never hides or removes historical entries, and review does not load it.
+
+### Conversation References
+
+Both `paperclip add` and `paperclip feedback add` accept `--harness`, `--session-id`,
+`--session-path`, and `--session-url` (underscore-named fields in JSON). Defaults come
+from `PAPERCLIP_HARNESS`, `PAPERCLIP_SESSION_ID`, `PAPERCLIP_SESSION_PATH`, and
+`PAPERCLIP_SESSION_URL`. Explicit input overrides defaults, including empty strings.
+References are optional and supplied by the agent or its environment; the CLI does
+not discover transcripts, read their contents, or check that paths still exist.
+
+Conversation references do not affect deduplication or idempotency digests. A new
+reference on a duplicate or idempotent capture is appended to the same observation;
+repeating an identical reference adds no event. Text and JSON review include them.
+
+### Compatibility and Installation
+
+Existing v1 events remain readable and unchanged. Native feedback and conversation
+associations introduce `paperclip.event.v2` events in the same append-only Markdown
+format. Old binaries cannot read ledgers containing those events: upgrade all
+writers before capturing conversation references in an existing shared ledger.
+There is no migration or automatic rewrite of old fingerprints or request digests.
+
+The delegated installer supplies `paperclip` and `skill-feedback` skills for Claude
+Code and Codex, plus the Paperclip binary. It supports the mise-en-place plan,
+install, uninstall, target, JSON, and `--install-root` contract. The mise-en-place
+registry advertises both skill names under Paperclip's `provides`.
+
+Use `paperclip feedback instructions` to obtain the short instruction for global
+`CLAUDE.md` or `AGENTS.md`. The installer emits a reminder; it does not edit shared
+instruction files or create feedback configuration. See [the global snippets](docs/global-instructions.md).
+
 ## Exit Codes
 
 - `0`: success

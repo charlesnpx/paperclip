@@ -19,10 +19,14 @@ type Group struct {
 func Groups(observations []domain.Observation) []Group {
 	byKey := map[string]*Group{}
 	for _, obs := range observations {
-		key := obs.RepoID + "\x00" + string(obs.Locus) + "\x00" + obs.Scope
+		repoID := obs.RepoID
+		if obs.Feedback != nil {
+			repoID = "all"
+		}
+		key := repoID + "\x00" + string(obs.Locus) + "\x00" + obs.Scope
 		group := byKey[key]
 		if group == nil {
-			group = &Group{RepoID: obs.RepoID, Locus: obs.Locus, Scope: domain.ScopeLabel(obs.Scope)}
+			group = &Group{RepoID: repoID, Locus: obs.Locus, Scope: domain.ScopeLabel(obs.Scope)}
 			byKey[key] = group
 		}
 		group.Observations = append(group.Observations, obs.Clone())
@@ -51,9 +55,14 @@ func RenderList(observations []domain.Observation) string {
 	var buf bytes.Buffer
 	for _, obs := range observations {
 		fmt.Fprintf(&buf, "%s [%s] repo=%s locus=%s scope=%s state=%s\n", obs.ID, obs.Severity, obs.RepoID, obs.Locus, domain.ScopeLabel(obs.Scope), obs.State)
-		fmt.Fprintf(&buf, "  expected: %s\n", oneLine(obs.Expected))
-		fmt.Fprintf(&buf, "  observed: %s\n", oneLine(obs.Observed))
-		fmt.Fprintf(&buf, "  impact: %s\n", oneLine(obs.Impact))
+		if obs.Feedback != nil {
+			renderFeedback(&buf, obs)
+		} else {
+			fmt.Fprintf(&buf, "  expected: %s\n", oneLine(obs.Expected))
+			fmt.Fprintf(&buf, "  observed: %s\n", oneLine(obs.Observed))
+			fmt.Fprintf(&buf, "  impact: %s\n", oneLine(obs.Impact))
+		}
+		renderConversations(&buf, obs)
 	}
 	return buf.String()
 }
@@ -67,9 +76,15 @@ func RenderReview(groups []Group) string {
 		fmt.Fprintf(&buf, "Group repo=%s locus=%s scope=%s\n", group.RepoID, group.Locus, group.Scope)
 		for _, obs := range group.Observations {
 			fmt.Fprintf(&buf, "- %s [%s]\n", obs.ID, obs.Severity)
-			fmt.Fprintf(&buf, "  Expected: %s\n", oneLine(obs.Expected))
-			fmt.Fprintf(&buf, "  Observed: %s\n", oneLine(obs.Observed))
-			fmt.Fprintf(&buf, "  Impact: %s\n", oneLine(obs.Impact))
+			if obs.Feedback != nil {
+				fmt.Fprintf(&buf, "  Repo: %s\n", obs.RepoID)
+				renderFeedback(&buf, obs)
+			} else {
+				fmt.Fprintf(&buf, "  Expected: %s\n", oneLine(obs.Expected))
+				fmt.Fprintf(&buf, "  Observed: %s\n", oneLine(obs.Observed))
+				fmt.Fprintf(&buf, "  Impact: %s\n", oneLine(obs.Impact))
+			}
+			renderConversations(&buf, obs)
 			if len(obs.Suggestions) > 0 {
 				fmt.Fprintf(&buf, "  Suggestions:\n")
 				for _, suggestion := range obs.Suggestions {
@@ -89,6 +104,27 @@ func RenderJSON(value any) (string, error) {
 	return string(body) + "\n", nil
 }
 
+func renderFeedback(buffer *bytes.Buffer, observation domain.Observation) {
+	feedback := observation.Feedback
+	fmt.Fprintf(buffer, "  Note: %s\n", oneLine(feedback.Note))
+	for _, detail := range []struct{ label, value string }{
+		{"Category", feedback.Category}, {"Workaround", feedback.Workaround},
+		{"Source", feedback.Source}, {"Version", feedback.Version},
+	} {
+		if detail.value != "" {
+			fmt.Fprintf(buffer, "  %s: %s\n", detail.label, oneLine(detail.value))
+		}
+	}
+}
+
+func renderConversations(buffer *bytes.Buffer, observation domain.Observation) {
+	for _, conversation := range observation.Conversations {
+		fmt.Fprintf(buffer, "  Conversation: harness=%s id=%s path=%s url=%s\n",
+			oneLine(conversation.Harness), oneLine(conversation.SessionID),
+			oneLine(conversation.SessionPath), oneLine(conversation.SessionURL))
+	}
+}
+
 func InstructionsAgents() string {
 	return `## Paperclip
 
@@ -99,6 +135,7 @@ Use ` + "`paperclip`" + ` to record local operational friction instead of buryin
 - Review active work blockers with ` + "`paperclip review`" + `.
 - Mark lifecycle progress with ` + "`paperclip claim-fixed <id>`" + `, ` + "`paperclip verify-fixed <id>`" + `, or ` + "`paperclip dispose <id> --reason ...`" + `.
 - Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
+- Attach known conversation references with --harness, --session-id, --session-path, and --session-url. Missing references do not block recording; do not guess the current session or copy transcript contents.
 `
 }
 

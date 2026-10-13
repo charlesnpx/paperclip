@@ -69,6 +69,7 @@ func runAdd(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, 
 	fs := flag.NewFlagSet("add", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	var raw domain.RawRequest
+	conversationFlags(fs, &raw.Conversation)
 	var inputJSON string
 	fs.StringVar(&raw.Expected, "expected", "", "expected")
 	fs.StringVar(&raw.Observed, "observed", "", "observed")
@@ -105,6 +106,9 @@ func runAdd(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, 
 			return diagnostic(stderr, fmt.Errorf("%w: invalid input json", app.ErrUsage))
 		}
 	}
+	if raw.Feedback != nil {
+		return diagnostic(stderr, usage(errors.New("use paperclip feedback add for skill feedback")))
+	}
 	result, err := application.Add(raw)
 	if err != nil {
 		return diagnostic(stderr, err)
@@ -121,6 +125,7 @@ func captureFlagsSet(fs *flag.FlagSet) bool {
 	captureNames := map[string]struct{}{
 		"expected": {}, "observed": {}, "impact": {}, "locus": {}, "severity": {},
 		"scope": {}, "suggestion": {}, "idempotency-key": {}, "idempotency_key": {},
+		"harness": {}, "session-id": {}, "session-path": {}, "session-url": {},
 	}
 	set := false
 	fs.Visit(func(flag *flag.Flag) {

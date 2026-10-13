@@ -94,17 +94,21 @@ type DisposedPayload struct {
 type EmptyPayload struct{}
 
 type RawRequest struct {
-	Expected       string `json:"expected"`
-	Observed       string `json:"observed"`
-	Impact         string `json:"impact"`
-	Locus          string `json:"locus"`
-	Severity       string `json:"severity"`
-	Scope          string `json:"scope"`
-	Suggestion     string `json:"suggestion"`
-	IdempotencyKey string `json:"idempotency_key"`
+	Conversation
+	Feedback       *Feedback `json:"feedback,omitempty"`
+	Expected       string    `json:"expected"`
+	Observed       string    `json:"observed"`
+	Impact         string    `json:"impact"`
+	Locus          string    `json:"locus"`
+	Severity       string    `json:"severity"`
+	Scope          string    `json:"scope"`
+	Suggestion     string    `json:"suggestion"`
+	IdempotencyKey string    `json:"idempotency_key"`
 }
 
 type ValidatedRequest struct {
+	Conversation   Conversation
+	Feedback       *Feedback
 	Expected       string
 	Observed       string
 	Impact         string
@@ -120,6 +124,8 @@ type ScannedRequest struct {
 }
 
 type NormalizedObservation struct {
+	Conversation   Conversation
+	Feedback       *Feedback
 	Expected       string
 	Observed       string
 	Impact         string
@@ -153,20 +159,22 @@ type Suggestion struct {
 }
 
 type Observation struct {
-	ID             string       `json:"id"`
-	CreatedAt      time.Time    `json:"created_at"`
-	UpdatedAt      time.Time    `json:"updated_at"`
-	State          State        `json:"state"`
-	RepoID         string       `json:"repo_id"`
-	Expected       string       `json:"expected"`
-	Observed       string       `json:"observed"`
-	Impact         string       `json:"impact"`
-	Locus          Locus        `json:"locus"`
-	Severity       Severity     `json:"severity"`
-	Scope          string       `json:"scope,omitempty"`
-	Fingerprint    string       `json:"fingerprint"`
-	Suggestions    []Suggestion `json:"suggestions,omitempty"`
-	DisposedReason string       `json:"disposed_reason,omitempty"`
+	Feedback       *Feedback      `json:"feedback,omitempty"`
+	Conversations  []Conversation `json:"conversations,omitempty"`
+	ID             string         `json:"id"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+	State          State          `json:"state"`
+	RepoID         string         `json:"repo_id"`
+	Expected       string         `json:"expected"`
+	Observed       string         `json:"observed"`
+	Impact         string         `json:"impact"`
+	Locus          Locus          `json:"locus"`
+	Severity       Severity       `json:"severity"`
+	Scope          string         `json:"scope,omitempty"`
+	Fingerprint    string         `json:"fingerprint"`
+	Suggestions    []Suggestion   `json:"suggestions,omitempty"`
+	DisposedReason string         `json:"disposed_reason,omitempty"`
 }
 
 type IdempotencyRecord struct {
@@ -183,8 +191,12 @@ func NewEvent(eventID string, occurredAt time.Time, eventType EventType, subject
 	if len(body) == 0 {
 		body = []byte("{}")
 	}
+	schema := SchemaVersion
+	if eventType == EventFeedbackOpened || eventType == EventConversationLinked {
+		schema = SchemaVersion2
+	}
 	return Event{
-		Schema:         SchemaVersion,
+		Schema:         schema,
 		EventID:        eventID,
 		OccurredAt:     occurredAt.UTC(),
 		Type:           eventType,
@@ -205,6 +217,11 @@ func (e Event) PayloadBytes() []byte {
 }
 
 func (o Observation) Clone() Observation {
+	if o.Feedback != nil {
+		feedback := *o.Feedback
+		o.Feedback = &feedback
+	}
+	o.Conversations = append([]Conversation(nil), o.Conversations...)
 	o.Suggestions = append([]Suggestion(nil), o.Suggestions...)
 	return o
 }
@@ -230,6 +247,7 @@ func NormalizeText(value string) string {
 
 func ValidateRawRequest(raw RawRequest) (ValidatedRequest, error) {
 	validated := ValidatedRequest{
+		Conversation:   raw.Conversation.Normalize(),
 		Expected:       raw.Expected,
 		Observed:       raw.Observed,
 		Impact:         raw.Impact,
@@ -238,6 +256,20 @@ func ValidateRawRequest(raw RawRequest) (ValidatedRequest, error) {
 		Scope:          raw.Scope,
 		Suggestion:     raw.Suggestion,
 		IdempotencyKey: raw.IdempotencyKey,
+	}
+	if raw.Feedback != nil {
+		feedback := raw.Feedback.Normalize()
+		if err := feedback.Validate(); err != nil {
+			return ValidatedRequest{}, err
+		}
+		severity := Severity(strings.ToLower(strings.TrimSpace(raw.Severity)))
+		if severity != "" && !validSeverity(severity) {
+			return ValidatedRequest{}, errors.New("invalid severity")
+		}
+		validated.Feedback = &feedback
+		validated.Scope = feedback.Skill
+		validated.Locus = string(LocusProcess)
+		return validated, nil
 	}
 	if NormalizeText(validated.Expected) == "" {
 		return ValidatedRequest{}, errors.New("expected is required")
@@ -268,6 +300,8 @@ func NormalizeScanned(scanned ScannedRequest, ctx Context) (NormalizedObservatio
 		severity = SeverityMedium
 	}
 	normalized := NormalizedObservation{
+		Feedback:       validated.Feedback,
+		Conversation:   validated.Conversation,
 		Expected:       NormalizeText(validated.Expected),
 		Observed:       NormalizeText(validated.Observed),
 		Impact:         NormalizeText(validated.Impact),
@@ -284,6 +318,13 @@ func NormalizeScanned(scanned ScannedRequest, ctx Context) (NormalizedObservatio
 }
 
 func Fingerprint(obs NormalizedObservation) string {
+	if obs.Feedback != nil {
+		return "fp-" + digestJSON(struct {
+			Feedback Feedback `json:"feedback"`
+			Severity Severity `json:"severity"`
+			RepoID   string   `json:"repo_id"`
+		}{*obs.Feedback, obs.Severity, obs.RepoID})
+	}
 	body := canonicalObservation{
 		Expected: obs.Expected,
 		Observed: obs.Observed,
@@ -297,6 +338,12 @@ func Fingerprint(obs NormalizedObservation) string {
 }
 
 func RequestDigest(obs NormalizedObservation) string {
+	if obs.Feedback != nil {
+		return "req-" + digestJSON(struct {
+			Fingerprint string `json:"fingerprint"`
+			Suggestion  string `json:"suggestion"`
+		}{Fingerprint(obs), obs.Suggestion})
+	}
 	body := canonicalRequest{
 		Expected:   obs.Expected,
 		Observed:   obs.Observed,
@@ -453,7 +500,7 @@ func RequestDigestFromEvent(event Event) (string, error) {
 }
 
 func validateEventEnvelope(event Event) error {
-	if event.Schema != SchemaVersion {
+	if event.Schema != SchemaVersion && event.Schema != SchemaVersion2 {
 		return fmt.Errorf("unknown schema version")
 	}
 	if event.EventID == "" {
@@ -475,6 +522,10 @@ func validateEventEnvelope(event Event) error {
 		return errors.New("context.repo_id is required")
 	}
 	switch event.Type {
+	case EventFeedbackOpened, EventConversationLinked:
+		if event.Schema != SchemaVersion2 {
+			return errors.New("event requires schema v2")
+		}
 	case EventObservationOpened, EventRemediationSuggested, EventFixedClaimed, EventFixedVerified, EventDisposed:
 	default:
 		return errors.New("unknown event type")
