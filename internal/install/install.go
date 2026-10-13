@@ -126,9 +126,6 @@ func Execute(opts Options) (Result, error) {
 			return Result{}, err
 		}
 		result.Targets["codex"] = targetResult
-		if opts.Operation != "uninstall" {
-			result.Notices = append(result.Notices, codexNotice())
-		}
 	}
 	if contains(targets, "tools") {
 		path, err := toolPath(opts.InstallRoot)
@@ -153,9 +150,6 @@ func Execute(opts Options) (Result, error) {
 		}
 		result.Targets["tools"] = TargetResult{Files: []FileResult{file}}
 	}
-	if opts.Operation != "uninstall" && (contains(targets, "claude") || contains(targets, "codex")) {
-		result.Notices = append(result.Notices, "To enable routine skill feedback, run paperclip feedback instructions and add its output to your global CLAUDE.md or AGENTS.md. Shared instruction files are not edited by the installer.")
-	}
 	return result, nil
 }
 
@@ -174,41 +168,19 @@ func targetFiles(opts Options, target string) ([]installFile, error) {
 		}
 		root = home
 	}
+	var dir string
 	switch target {
 	case "claude":
-		return []installFile{
-			{
-				path: filepath.Join(root, ".claude", "skills", "skill-feedback", "SKILL.md"),
-				body: []byte(feedbackSkill),
-				mode: 0o644,
-			},
-			{
-				path: filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md"),
-				body: []byte(paperclipSkill),
-				mode: 0o644,
-			},
-			{
-				path: filepath.Join(root, ".claude", "rules", "paperclip.md"),
-				body: []byte(claudeRule),
-				mode: 0o644,
-			},
-		}, nil
+		dir = ".claude"
 	case "codex":
-		return []installFile{
-			{
-				path: filepath.Join(root, ".codex", "skills", "skill-feedback", "SKILL.md"),
-				body: []byte(feedbackSkill),
-				mode: 0o644,
-			},
-			{
-				path: filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md"),
-				body: []byte(codexSkill),
-				mode: 0o644,
-			},
-		}, nil
+		dir = ".codex"
 	default:
 		return nil, errors.New("unknown target")
 	}
+	return []installFile{
+		{path: filepath.Join(root, dir, "skills", "paperclip", "SKILL.md"), body: []byte(paperclipSkill), mode: 0o644},
+		{path: filepath.Join(root, dir, "skills", "paperclip:skill-feedback", "SKILL.md"), body: []byte(feedbackSkill), mode: 0o644},
+	}, nil
 }
 
 func applyTargetFiles(operation string, files []installFile) (TargetResult, error) {
@@ -244,19 +216,6 @@ func installDataFile(file installFile) (string, error) {
 	}
 	sum := sha256.Sum256(file.body)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-func codexNotice() string {
-	agentsPath := os.Getenv("CODEX_HOME")
-	if agentsPath == "" {
-		if home, err := os.UserHomeDir(); err == nil {
-			agentsPath = filepath.Join(home, ".codex")
-		} else {
-			agentsPath = "$CODEX_HOME"
-		}
-	}
-	agentsPath = filepath.Join(agentsPath, "AGENTS.md")
-	return "To enable routine Paperclip use in Codex, add this text to your " + agentsPath + " file:\n\nUse the paperclip skill when operational friction, repo issues, local machine issues, harness/tool/model failures, broken links, or repeated process blockers should be recorded for later review. Do not paste secrets; paperclip stores local notes as provided."
 }
 
 func parse(args []string, executable string) (Options, error) {
@@ -413,57 +372,3 @@ func SortedTargets(result Result) []string {
 	sort.Strings(targets)
 	return targets
 }
-
-const codexSkill = `---
-name: paperclip
-description: Explicit-use Paperclip workflows for recording and reviewing local operational friction. Use only when the user explicitly invokes paperclip or an installed global/project instruction tells you to use Paperclip.
-metadata:
-  policy:
-    allow_implicit_invocation: false
----
-
-# Paperclip
-
-Use the local ` + "`paperclip`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
-
-Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md`" + `. It stores the text provided by the user or agent; do not paste secrets.
-
-## Workflows
-
-- Add a papercut: run ` + "`paperclip add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
-- Add sensitive details: prefer ` + "`paperclip add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
-- Review current repo: run ` + "`paperclip review`" + ` from the repository being worked on.
-- List everything: run ` + "`paperclip list --repo all`" + `.
-- Dispose noise: run ` + "`paperclip dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
-
-Attach available conversation references with --harness, --session-id, --session-path, and --session-url, or the corresponding underscore-named JSON fields. PAPERCLIP_HARNESS and PAPERCLIP_SESSION_ID/PATH/URL supply environment defaults; explicit input overrides them. Do not guess the current conversation from the newest transcript or read its contents. Missing references do not block capture. Skill-specific feedback belongs in the skill-feedback skill instead of being duplicated here.
-
-Use stdout from ` + "`paperclip`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
-`
-
-const paperclipSkill = `---
-name: paperclip
-description: Explicit-use Paperclip workflows for recording and reviewing local operational friction. Use only when the user explicitly invokes paperclip or an installed global/project instruction tells you to use Paperclip.
----
-
-# Paperclip
-
-Use the local ` + "`paperclip`" + ` CLI to record and review operational friction encountered while working: repo issues, machine configuration problems, harness or tool failures, model failures, broken links, and process blockers.
-
-Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paperclip}/PAPERCLIP.md`" + `. It stores the text provided by the user or agent; do not paste secrets.
-
-## Workflows
-
-- Add a papercut: run ` + "`paperclip add --expected ... --observed ... --impact ... --locus repo`" + `. Include ` + "`--severity`" + `, ` + "`--scope`" + `, and ` + "`--suggestion`" + ` when useful.
-- Add sensitive details: prefer ` + "`paperclip add --input-json -`" + ` so values do not enter shell history. Still do not paste credentials, tokens, private keys, or other secrets.
-- Review current repo: run ` + "`paperclip review`" + ` from the repository being worked on.
-- List everything: run ` + "`paperclip list --repo all`" + `.
-- Dispose noise: run ` + "`paperclip dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
-
-Attach available conversation references with --harness, --session-id, --session-path, and --session-url, or the corresponding underscore-named JSON fields. PAPERCLIP_HARNESS and PAPERCLIP_SESSION_ID/PATH/URL supply environment defaults; explicit input overrides them. Do not guess the current conversation from the newest transcript or read its contents. Missing references do not block capture. Skill-specific feedback belongs in the skill-feedback skill instead of being duplicated here.
-
-Use stdout from ` + "`paperclip`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
-`
-
-const claudeRule = `Use the Paperclip skill when operational friction, repo issues, local machine issues, harness/tool/model failures, broken links, or repeated process blockers should be recorded for later review. Do not paste secrets; Paperclip stores local notes as provided.
-`

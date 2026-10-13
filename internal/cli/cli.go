@@ -50,8 +50,6 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, app
 		return runTransition(args[1:], stdout, stderr, application.VerifyFixed)
 	case "dispose":
 		return runDispose(args[1:], stdout, stderr, application)
-	case "instructions":
-		return runInstructions(args[1:], stdout, stderr)
 	case "delegate-install":
 		return RunInstaller(args[1:], stdout, stderr)
 	default:
@@ -246,24 +244,6 @@ func parseDisposeArgs(args []string) (string, string, error) {
 		return "", "", errors.New("dispose requires --reason")
 	}
 	return id, reason, nil
-}
-
-func runInstructions(args []string, stdout io.Writer, stderr io.Writer) int {
-	fs := flag.NewFlagSet("instructions", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	var format string
-	fs.StringVar(&format, "format", "", "format")
-	if err := fs.Parse(args); err != nil {
-		return diagnostic(stderr, usage(err))
-	}
-	if fs.NArg() != 0 {
-		return diagnostic(stderr, usage(errors.New("instructions takes no positional arguments")))
-	}
-	if format != "agents" {
-		return diagnostic(stderr, usage(errors.New("instructions requires --format agents")))
-	}
-	fmt.Fprint(stdout, review.InstructionsAgents())
-	return ExitSuccess
 }
 
 func diagnostic(stderr io.Writer, err error) int {

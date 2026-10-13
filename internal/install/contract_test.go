@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestFeedbackInstallerContract(t *testing.T) {
+func TestInstallerContract(t *testing.T) {
 	for _, target := range []string{"all", "claude", "codex", "tools"} {
 		t.Run(target, func(t *testing.T) {
 			root := filepath.Join(t.TempDir(), "stage")
@@ -47,9 +47,9 @@ func TestFeedbackInstallerContract(t *testing.T) {
 					}
 				}
 				if name == "claude" || name == "codex" {
-					body, err := os.ReadFile(filepath.Join(root, "."+name, "skills", "skill-feedback", "SKILL.md"))
+					body, err := os.ReadFile(filepath.Join(root, "."+name, "skills", "paperclip:skill-feedback", "SKILL.md"))
 					if err != nil || string(body) != feedbackSkill {
-						t.Fatalf("missing feedback payload for %s: %v", name, err)
+						t.Fatalf("missing skill-feedback payload for %s: %v", name, err)
 					}
 				}
 			}

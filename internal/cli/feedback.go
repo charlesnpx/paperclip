@@ -20,8 +20,6 @@ type feedbackRequest struct {
 	IdempotencyKey string `json:"idempotency_key"`
 }
 
-const FeedbackInstruction = "After using a skill, use the skill-feedback skill to record useful observations about ergonomics, instructions, APIs, bugs, improvements, or workarounds, subject to its include/exclude configuration. Include the skill name and a concrete note; attach available conversation references. Record feedback even when the task succeeds, but do not invent issues or require a report for every use. Keep feedback local, omit secrets, avoid duplicating it in the general Paperclip ledger, and continue the user's task."
-
 func RunFeedback(args []string, stdin io.Reader, stdout, stderr io.Writer, application Application) int {
 	global := flag.NewFlagSet("feedback", flag.ContinueOnError)
 	global.SetOutput(io.Discard)
@@ -42,7 +40,6 @@ func RunFeedback(args []string, stdin io.Reader, stdout, stderr io.Writer, appli
   list|review [--skill NAME] [--repo all|current|none|REPO_ID] [--json]
   claim-fixed|verify-fixed ID
   dispose ID --reason TEXT
-  instructions
 
 Uses ${PAPERCLIP_FEEDBACK_HOME:-~/paperclip/skill-feedback}/PAPERCLIP.md.
 Configuration defaults to config.json in that directory.
@@ -107,12 +104,6 @@ List and review include all repositories by default.`)
 		return runTransition(args[1:], stdout, stderr, application.VerifyFixed)
 	case "dispose":
 		return runDispose(args[1:], stdout, stderr, application)
-	case "instructions":
-		if len(args) != 1 {
-			return diagnostic(stderr, usage(errors.New("feedback instructions takes no arguments")))
-		}
-		fmt.Fprintln(stdout, FeedbackInstruction)
-		return ExitSuccess
 	default:
 		return diagnostic(stderr, usage(errors.New("unknown feedback command")))
 	}
