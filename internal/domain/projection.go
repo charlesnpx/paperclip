@@ -67,6 +67,10 @@ func (s *Snapshot) apply(event Event) error {
 	}
 
 	switch event.Type {
+	case EventFeedbackOpened:
+		return s.applyFeedback(event)
+	case EventConversationLinked:
+		return s.applyConversation(event)
 	case EventObservationOpened:
 		payload, err := DecodePayload[ObservationOpenedPayload](event)
 		if err != nil {
@@ -129,6 +133,7 @@ func (s *Snapshot) apply(event Event) error {
 		}
 		if payload.RequestDigest != "" {
 			expected := NormalizedObservation{
+				Feedback:   obs.Feedback,
 				Expected:   obs.Expected,
 				Observed:   obs.Observed,
 				Impact:     obs.Impact,

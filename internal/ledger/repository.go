@@ -41,6 +41,20 @@ func defaultHome() (string, string) {
 	return "", ""
 }
 
+func NewFeedback() (*Repository, error) {
+	home := os.Getenv("PAPERCLIP_FEEDBACK_HOME")
+	if home == "" {
+		userHome, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		home = filepath.Join(userHome, "paperclip", "skill-feedback")
+	} else if !filepath.IsAbs(home) {
+		return nil, errors.New("PAPERCLIP_FEEDBACK_HOME must be absolute")
+	}
+	return New(filepath.Join(home, "PAPERCLIP.md")), nil
+}
+
 func New(path string) *Repository {
 	return &Repository{path: path}
 }

@@ -24,20 +24,20 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 	claudeFiles := result.Targets["claude"].Files
-	if len(claudeFiles) != 2 {
+	if len(claudeFiles) != 3 {
 		t.Fatalf("claude files = %d", len(claudeFiles))
 	}
-	if claudeFiles[0].Path != filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md") {
+	if claudeFiles[1].Path != filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md") {
 		t.Fatalf("claude skill path = %q", claudeFiles[0].Path)
 	}
-	if claudeFiles[1].Path != filepath.Join(root, ".claude", "rules", "paperclip.md") {
+	if claudeFiles[2].Path != filepath.Join(root, ".claude", "rules", "paperclip.md") {
 		t.Fatalf("claude rule path = %q", claudeFiles[1].Path)
 	}
 	codexFiles := result.Targets["codex"].Files
-	if len(codexFiles) != 1 {
+	if len(codexFiles) != 2 {
 		t.Fatalf("codex files = %d", len(codexFiles))
 	}
-	if codexFiles[0].Path != filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md") {
+	if codexFiles[1].Path != filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md") {
 		t.Fatalf("codex skill path = %q", codexFiles[0].Path)
 	}
 	toolFiles := result.Targets["tools"].Files
@@ -53,7 +53,7 @@ func TestPlanAllReportsDelegatedTargetsWithoutWrites(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".codex")); !os.IsNotExist(err) {
 		t.Fatalf("plan should not create codex path, stat err=%v", err)
 	}
-	if len(result.Notices) != 1 || !strings.Contains(result.Notices[0], "add this text") {
+	if len(result.Notices) != 2 || !strings.Contains(result.Notices[0], "add this text") {
 		t.Fatalf("expected codex notice, got %#v", result.Notices)
 	}
 }
@@ -68,7 +68,7 @@ func TestCodexInstallTargetWritesExplicitUseSkill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Targets) != 1 || len(result.Targets["codex"].Files) != 1 {
+	if len(result.Targets) != 1 || len(result.Targets["codex"].Files) != 2 {
 		t.Fatalf("unexpected targets: %+v", result.Targets)
 	}
 	path := filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md")
@@ -123,7 +123,7 @@ func TestClaudeInstallTargetWritesSkillAndRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := result.Targets["claude"].Files
-	if len(files) != 2 {
+	if len(files) != 3 {
 		t.Fatalf("claude files = %d", len(files))
 	}
 	for _, path := range []string{
@@ -159,7 +159,7 @@ func TestWrapperWorksOutsideRepository(t *testing.T) {
 	if err := json.Unmarshal(bytes.TrimSpace(out), &result); err != nil {
 		t.Fatalf("decode output: %v\n%s", err, string(out))
 	}
-	if result.Operation != "plan" || len(result.Targets["codex"].Files) != 1 {
+	if result.Operation != "plan" || len(result.Targets["codex"].Files) != 2 {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 }
@@ -224,7 +224,7 @@ func TestFalseOperationFlagDoesNotSelectOperation(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	code := Run([]string{"--plan=false", "--target", "codex", "--json"}, &stdout, &stderr, exe)
+	code := Run([]string{"--plan=false", "--target", "codex", "--json", "--install-root", root}, &stdout, &stderr, exe)
 	if code != 0 {
 		t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 	}
@@ -237,19 +237,19 @@ func TestFalseOperationFlagDoesNotSelectOperation(t *testing.T) {
 	}
 	stdout.Reset()
 	stderr.Reset()
-	code = Run([]string{"--plan=false", "--install", "--target", "codex", "--json"}, &stdout, &stderr, exe)
+	code = Run([]string{"--plan=false", "--install", "--target", "codex", "--json", "--install-root", root}, &stdout, &stderr, exe)
 	if code != 0 {
 		t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()
 	stderr.Reset()
-	code = Run([]string{"--plan=False", "--install", "--target", "codex", "--json"}, &stdout, &stderr, exe)
+	code = Run([]string{"--plan=False", "--install", "--target", "codex", "--json", "--install-root", root}, &stdout, &stderr, exe)
 	if code != 0 {
 		t.Fatalf("False variant code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()
 	stderr.Reset()
-	code = Run([]string{"--plan=0", "--install", "--target", "codex", "--json"}, &stdout, &stderr, exe)
+	code = Run([]string{"--plan=0", "--install", "--target", "codex", "--json", "--install-root", root}, &stdout, &stderr, exe)
 	if code != 0 {
 		t.Fatalf("0 variant code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 	}

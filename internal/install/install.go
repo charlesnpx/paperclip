@@ -153,6 +153,9 @@ func Execute(opts Options) (Result, error) {
 		}
 		result.Targets["tools"] = TargetResult{Files: []FileResult{file}}
 	}
+	if opts.Operation != "uninstall" && (contains(targets, "claude") || contains(targets, "codex")) {
+		result.Notices = append(result.Notices, "To enable routine skill feedback, run paperclip feedback instructions and add its output to your global CLAUDE.md or AGENTS.md. Shared instruction files are not edited by the installer.")
+	}
 	return result, nil
 }
 
@@ -175,6 +178,11 @@ func targetFiles(opts Options, target string) ([]installFile, error) {
 	case "claude":
 		return []installFile{
 			{
+				path: filepath.Join(root, ".claude", "skills", "skill-feedback", "SKILL.md"),
+				body: []byte(feedbackSkill),
+				mode: 0o644,
+			},
+			{
 				path: filepath.Join(root, ".claude", "skills", "paperclip", "SKILL.md"),
 				body: []byte(paperclipSkill),
 				mode: 0o644,
@@ -187,6 +195,11 @@ func targetFiles(opts Options, target string) ([]installFile, error) {
 		}, nil
 	case "codex":
 		return []installFile{
+			{
+				path: filepath.Join(root, ".codex", "skills", "skill-feedback", "SKILL.md"),
+				body: []byte(feedbackSkill),
+				mode: 0o644,
+			},
 			{
 				path: filepath.Join(root, ".codex", "skills", "paperclip", "SKILL.md"),
 				body: []byte(codexSkill),
@@ -423,6 +436,8 @@ Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paper
 - List everything: run ` + "`paperclip list --repo all`" + `.
 - Dispose noise: run ` + "`paperclip dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
 
+Attach available conversation references with --harness, --session-id, --session-path, and --session-url, or the corresponding underscore-named JSON fields. PAPERCLIP_HARNESS and PAPERCLIP_SESSION_ID/PATH/URL supply environment defaults; explicit input overrides them. Do not guess the current conversation from the newest transcript or read its contents. Missing references do not block capture. Skill-specific feedback belongs in the skill-feedback skill instead of being duplicated here.
+
 Use stdout from ` + "`paperclip`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
 `
 
@@ -444,6 +459,8 @@ Paperclip writes to the local personal ledger at ` + "`${PAPERCLIP_HOME:-~/paper
 - Review current repo: run ` + "`paperclip review`" + ` from the repository being worked on.
 - List everything: run ` + "`paperclip list --repo all`" + `.
 - Dispose noise: run ` + "`paperclip dispose <observation-id> --reason ...`" + ` when an item is obsolete, duplicate, or not actionable.
+
+Attach available conversation references with --harness, --session-id, --session-path, and --session-url, or the corresponding underscore-named JSON fields. PAPERCLIP_HARNESS and PAPERCLIP_SESSION_ID/PATH/URL supply environment defaults; explicit input overrides them. Do not guess the current conversation from the newest transcript or read its contents. Missing references do not block capture. Skill-specific feedback belongs in the skill-feedback skill instead of being duplicated here.
 
 Use stdout from ` + "`paperclip`" + ` as the source of truth for created IDs and lifecycle results. Do not edit ` + "`PAPERCLIP.md`" + ` event blocks by hand.
 `

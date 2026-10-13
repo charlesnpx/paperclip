@@ -75,7 +75,7 @@ func (a *App) Add(raw domain.RawRequest) (domain.CommitResult, error) {
 	if err != nil {
 		return domain.CommitResult{}, fmt.Errorf("%w: %v", ErrUsage, err)
 	}
-	return a.store.Commit(a.lockTimeout, func(snapshot domain.Snapshot) ([]domain.Event, domain.CommitResult, error) {
+	return a.commitObservation(normalized.Conversation, func(snapshot domain.Snapshot) ([]domain.Event, domain.CommitResult, error) {
 		if normalized.IdempotencyKey != "" {
 			record, ok := snapshot.Idempotency(normalized.IdempotencyKey)
 			if ok {
@@ -260,6 +260,11 @@ func (a *App) newOpenEvent(obsID string, obs domain.NormalizedObservation) (doma
 	eventID, err := a.newID("evt")
 	if err != nil {
 		return domain.Event{}, err
+	}
+	if obs.Feedback != nil {
+		return domain.NewEvent(eventID, a.clock(), domain.EventFeedbackOpened, obsID, "", domain.Context{RepoID: obs.RepoID}, domain.FeedbackOpenedPayload{
+			Feedback: *obs.Feedback, Severity: obs.Severity, Fingerprint: obs.Fingerprint,
+		})
 	}
 	return domain.NewEvent(eventID, a.clock(), domain.EventObservationOpened, obsID, "", domain.Context{RepoID: obs.RepoID}, domain.ObservationOpenedPayload{
 		Expected:    obs.Expected,
