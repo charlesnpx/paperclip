@@ -169,16 +169,17 @@ func runFeedbackAdd(args []string, stdin io.Reader, stdout, stderr io.Writer, ap
 			return diagnostic(stderr, usage(errors.New("trailing feedback JSON content")))
 		}
 	}
-	request.Feedback = request.Feedback.Normalize()
 	raw := domain.RawRequest{
 		Feedback: &request.Feedback, Conversation: request.Conversation,
 		Severity: request.Severity, Suggestion: request.Suggestion, IdempotencyKey: request.IdempotencyKey,
 	}
-	if _, err := domain.ValidateRawRequest(raw); err != nil {
+	validated, err := domain.ValidateRawRequest(raw)
+	if err != nil {
 		return diagnostic(stderr, usage(err))
 	}
-	if reason := config.reason(request.Skill); reason != "" {
-		return feedbackJSON(stdout, stderr, map[string]any{"skill": request.Skill, "skipped": true, "reason": reason})
+	skill := validated.Feedback.Skill
+	if reason := config.reason(skill); reason != "" {
+		return feedbackJSON(stdout, stderr, map[string]any{"skill": skill, "skipped": true, "reason": reason})
 	}
 	result, err := application.Add(raw)
 	if err != nil {
