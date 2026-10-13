@@ -93,15 +93,12 @@ func (snapshot *Snapshot) applyFeedback(event Event) error {
 	if payload.Fingerprint != Fingerprint(normalized) {
 		return errors.New("fingerprint does not match feedback payload")
 	}
-	if _, exists := snapshot.activeByFingerprint[payload.Fingerprint]; exists {
-		return errors.New("duplicate active feedback fingerprint")
-	}
 	snapshot.observations[event.SubjectID] = Observation{
 		ID: event.SubjectID, CreatedAt: event.OccurredAt, UpdatedAt: event.OccurredAt,
 		State: StateOpen, RepoID: event.Context.RepoID, Feedback: &payload.Feedback,
 		Scope: payload.Feedback.Skill, Locus: LocusProcess, Severity: payload.Severity, Fingerprint: payload.Fingerprint,
 	}
-	snapshot.activeByFingerprint[payload.Fingerprint] = event.SubjectID
+	snapshot.latestByFingerprint[payload.Fingerprint] = event.SubjectID
 	return nil
 }
 
