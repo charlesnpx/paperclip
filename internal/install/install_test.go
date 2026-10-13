@@ -56,7 +56,7 @@ func TestSkillsAreImplicitAndWriteOnly(t *testing.T) {
 		if strings.Contains(body, "allow_implicit_invocation") {
 			t.Fatalf("skills must be available for implicit use:\n%s", body)
 		}
-		if !strings.Contains(body, "unless the user") {
+		if !strings.Contains(body, "unless the user asks") {
 			t.Fatalf("skills must forbid reading the ledger unless asked:\n%s", body)
 		}
 	}

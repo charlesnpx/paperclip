@@ -2,7 +2,7 @@ package install
 
 const paperclipSkill = `---
 name: "paperclip"
-description: "Record operational friction (repo, machine, harness, tool, model, service, or process problems, broken links, repeated blockers) with paperclip add, then continue. Write-only: never read the ledger unless the user asks. Skill-specific feedback goes to paperclip:skill-feedback."
+description: "Record operational friction (repo, machine, harness, tool, model, service, or process problems; broken links; repeated blockers) with paperclip add, then continue. Write-only unless the user asks to review. Skill-specific feedback: paperclip:skill-feedback."
 ---
 
 # Paperclip
@@ -22,7 +22,7 @@ Report a problem each time it occurs; repeats are useful signal. An identical re
 
 const feedbackSkill = `---
 name: "paperclip:skill-feedback"
-description: "After using a skill, record concrete feedback on it (friction, unclear instructions, bugs, workarounds, improvements) with paperclip feedback add, even when the task succeeded. Do not invent issues. Write-only: never read feedback unless the user asks."
+description: "After using a skill, record actionable feedback on it (friction, unclear instructions, bugs, workarounds, improvements) with paperclip feedback add, even if the task succeeded. Do not invent issues. Write-only unless the user asks to review."
 ---
 
 # Paperclip Skill Feedback
@@ -35,8 +35,8 @@ After using a skill, record feedback worth acting on: awkward steps, unclear or 
 - ` + "`--note`" + `: what happened and why it matters. Separate what you observed from an inferred cause.
 - ` + "`--workaround`" + `: what you tried and whether it worked.
 - ` + "`--severity`" + `: critical, high, medium (default), low, or info. Use low or info for minor friction.
-- For multiline text, pipe a JSON object (` + "`skill`" + `, ` + "`note`" + `, and optional fields with underscores) to ` + "`paperclip feedback add --input-json -`" + `.
-- Conversation references (` + "`--harness`" + `, ` + "`--session-id`" + `, ` + "`--session-path`" + `, ` + "`--session-url`" + `) work as in the paperclip skill.
+- For multiline text, pipe a JSON object (` + "`skill`" + `, ` + "`note`" + `, and optional fields with underscores) to ` + "`paperclip feedback add --input-json -`" + `. Do not combine it with capture flags.
+- Attach known conversation references with ` + "`--harness`" + `, ` + "`--session-id`" + `, ` + "`--session-path`" + `, and ` + "`--session-url`" + `. Do not guess them or copy transcript contents.
 
 A result with ` + "`skipped: true`" + ` means the user's feedback configuration excludes that skill; do not change the configuration. Repeats are useful signal; an identical report within 10 minutes is dropped as a retry. Never include secrets. Other operational friction belongs in the paperclip skill. Recording feedback does not authorize editing the skill or contacting its maintainers. If recording fails, mention it briefly and continue; do not report that failure through this skill.
 `
