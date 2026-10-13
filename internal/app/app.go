@@ -41,6 +41,8 @@ func New(store Store, context ContextResolver) *App {
 	}
 }
 
+const DuplicateWindow = 10 * time.Minute
+
 func (a *App) WithClock(clock func() time.Time) *App {
 	cp := *a
 	cp.clock = clock
@@ -84,7 +86,7 @@ func (a *App) Add(raw domain.RawRequest) (domain.CommitResult, error) {
 			}
 		}
 
-		if existing, ok := snapshot.ActiveObservationByFingerprint(normalized.Fingerprint); ok {
+		if existing, ok := snapshot.LatestObservationByFingerprint(normalized.Fingerprint); ok && existing.Active() && a.clock().Sub(existing.CreatedAt) < DuplicateWindow {
 			var events []domain.Event
 			result := domain.CommitResult{ObservationID: existing.ID, Duplicate: true}
 			if normalized.Suggestion != "" && !existing.HasSuggestion(normalized.Suggestion) {
